@@ -19,6 +19,8 @@ export default function TradeTable({ trades, initialRows = 20 }: TradeTableProps
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedTrade, setSelectedTrade] = useState<AptTrade | null>(null);
 
+  const maxPrice = trades.length > 0 ? Math.max(...trades.map(t => t.거래금액)) : 0;
+
   const sorted = [...trades].sort((a, b) => {
     const dir = sortDir === 'desc' ? -1 : 1;
     switch (sortKey) {
@@ -118,8 +120,17 @@ export default function TradeTable({ trades, initialRows = 20 }: TradeTableProps
                   {trade.법정동}
                 </td>
                 <td className="py-3 px-3 text-right">
-                  <span className="text-[15px] font-bold text-slate-900 tabular-nums">
-                    {formatPrice(trade.거래금액)}
+                  <span className="inline-flex items-center gap-1.5">
+                    {trade.거래금액 === maxPrice && trades.length > 1 && (
+                      <span className="px-1.5 py-0.5 rounded text-[11px] font-semibold bg-red-50 text-red-500">
+                        최고가
+                      </span>
+                    )}
+                    <span className={`text-[15px] font-bold tabular-nums ${
+                      trade.거래금액 === maxPrice && trades.length > 1 ? 'text-red-500' : 'text-slate-900'
+                    }`}>
+                      {formatPrice(trade.거래금액)}
+                    </span>
                   </span>
                 </td>
                 <td className="py-3 px-3 text-right text-[13px] text-slate-500 tabular-nums hidden sm:table-cell">

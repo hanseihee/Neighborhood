@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, MapPin } from 'lucide-react';
 import type { AptTrade } from '@/lib/types';
 import { getApartmentSummary } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -67,7 +67,13 @@ export default function ApartmentList({ trades, selectedApt, onSelectApt }: Apar
               className={`flex items-center gap-4 px-5 py-3.5 transition-colors cursor-pointer relative ${
                 isSelected
                   ? 'bg-primary-50/60'
-                  : 'hover:bg-slate-50/60'
+                  : i === 0
+                    ? 'bg-amber-50/60 hover:bg-amber-50'
+                    : i === 1
+                      ? 'bg-slate-50/60 hover:bg-slate-100/60'
+                      : i === 2
+                        ? 'bg-orange-50/40 hover:bg-orange-50/60'
+                        : 'hover:bg-slate-50/60'
               }`}
             >
               {/* Selected indicator bar */}
@@ -75,9 +81,23 @@ export default function ApartmentList({ trades, selectedApt, onSelectApt }: Apar
                 <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-primary-500" />
               )}
 
-              <span className="text-[14px] font-semibold text-slate-300 tabular-nums w-6 text-center flex-shrink-0">
-                {i + 1}
-              </span>
+              {i < 3 ? (
+                <span
+                  className={`w-[26px] h-[26px] rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-bold ${
+                    i === 0
+                      ? 'bg-amber-400 text-white'
+                      : i === 1
+                        ? 'bg-slate-400 text-white'
+                        : 'bg-amber-600 text-white'
+                  }`}
+                >
+                  {i + 1}
+                </span>
+              ) : (
+                <span className="text-[14px] font-semibold text-slate-300 tabular-nums w-[26px] text-center flex-shrink-0">
+                  {i + 1}
+                </span>
+              )}
 
               <div className="flex-1 min-w-0">
                 <p className={`text-[15px] font-semibold truncate ${
@@ -105,6 +125,20 @@ export default function ApartmentList({ trades, selectedApt, onSelectApt }: Apar
                   {sortMode === 'max' ? '최고가' : '평균'}
                 </p>
               </div>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(
+                    `https://map.naver.com/p/search/${encodeURIComponent(`${apt.법정동} ${apt.아파트}`)}`,
+                    '_blank'
+                  );
+                }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-300 hover:text-primary-500 hover:bg-primary-50 transition-colors cursor-pointer flex-shrink-0"
+                title="네이버 지도에서 보기"
+              >
+                <MapPin size={16} />
+              </button>
             </div>
           );
         })}
