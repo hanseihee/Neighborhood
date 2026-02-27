@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Building2, BarChart3, TrendingUp, ArrowDownUp, Info, X } from 'lucide-react';
+import { Building2, BarChart3, TrendingUp, ArrowDownUp, X } from 'lucide-react';
 import RegionSelector from '@/components/RegionSelector';
 import StatCard from '@/components/StatCard';
 import LineChart from '@/components/LineChart';
@@ -16,7 +16,6 @@ export default function HomePage() {
   const [regionCode, setRegionCode] = useState('');
   const [trades, setTrades] = useState<AptTrade[]>([]);
   const [loading, setLoading] = useState(false);
-  const [isSample, setIsSample] = useState(false);
   const [selectedArea, setSelectedArea] = useState<number | null>(null);
   const [selectedApt, setSelectedApt] = useState<string | null>(null);
   const tradeTableRef = useRef<HTMLDivElement>(null);
@@ -38,10 +37,7 @@ export default function HomePage() {
     setSelectedArea(30);
     setSelectedApt(null);
     fetchTrades(regionCode, 24)
-      .then((data) => {
-        setTrades(data.trades);
-        setIsSample(data.isSample);
-      })
+      .then((data) => setTrades(data.trades))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [regionCode]);
@@ -96,24 +92,6 @@ export default function HomePage() {
         selectedRegion={regionCode}
         onRegionChange={setRegionCode}
       />
-
-      {/* Sample data notice */}
-      {isSample && regionCode && (
-        <div className="flex items-start gap-2.5 px-4 py-3.5 bg-amber-50/80 border border-amber-200/50 rounded-xl">
-          <Info size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
-          <p className="text-[14px] text-amber-700 leading-relaxed">
-            샘플 데이터입니다.{' '}
-            <code className="px-1.5 py-0.5 bg-amber-100/80 rounded text-[13px]">
-              .env.local
-            </code>
-            에{' '}
-            <code className="px-1.5 py-0.5 bg-amber-100/80 rounded text-[13px]">
-              MOLIT_API_KEY
-            </code>
-            를 설정하면 실제 데이터가 표시됩니다.
-          </p>
-        </div>
-      )}
 
       {/* Loading */}
       {loading && (

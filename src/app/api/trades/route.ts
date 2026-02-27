@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateSampleTrades } from '@/lib/sample-data';
 import type { AptTrade } from '@/lib/types';
 
 // Vercel Hobby 플랜 Function 타임아웃 설정 (기본 10초 → 30초)
@@ -23,10 +22,11 @@ export async function GET(request: NextRequest) {
 
   const apiKey = process.env.MOLIT_API_KEY;
 
-  // API 키가 없으면 샘플 데이터 반환
   if (!apiKey) {
-    const trades = generateSampleTrades(lawdCd);
-    return NextResponse.json({ trades, isSample: true });
+    return NextResponse.json(
+      { error: 'MOLIT_API_KEY가 설정되지 않았습니다' },
+      { status: 500 }
+    );
   }
 
   // 실제 API 호출
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { trades: allTrades, isSample: false },
+      { trades: allTrades },
       {
         headers: {
           'Cache-Control': `public, s-maxage=${CACHE_MAX_AGE}, stale-while-revalidate=${STALE_REVALIDATE}`,
@@ -66,8 +66,10 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error('[MOLIT] API 에러:', error);
-    const trades = generateSampleTrades(lawdCd);
-    return NextResponse.json({ trades, isSample: true });
+    return NextResponse.json(
+      { error: '데이터를 불러오는 중 오류가 발생했습니다' },
+      { status: 502 }
+    );
   }
 }
 

@@ -4,7 +4,7 @@ import type { AptTrade, MonthlyStats } from './types';
 export async function fetchTrades(
   lawdCd: string,
   months: number = 6
-): Promise<{ trades: AptTrade[]; isSample: boolean }> {
+): Promise<{ trades: AptTrade[] }> {
   const res = await fetch(`/api/trades?lawdCd=${lawdCd}&months=${months}`);
   if (!res.ok) throw new Error('데이터를 불러올 수 없습니다');
   return res.json();
