@@ -1,4 +1,5 @@
 import type { AptTrade, MonthlyStats } from './types';
+import { toSupplyPyeong } from './utils';
 
 /** 실거래 데이터 fetch */
 export async function fetchTrades(
@@ -45,9 +46,9 @@ export function calculateMonthlyStats(trades: AptTrade[]): MonthlyStats[] {
   return stats;
 }
 
-/** ㎡ → 반올림 평수 (같은 단지의 미세한 면적 차이를 하나로 묶는 기준) */
+/** ㎡ → 공급면적 기준 평수 (같은 단지의 미세한 면적 차이를 하나로 묶는 기준) */
 function toPyeong(sqm: number): number {
-  return Math.round(sqm / 3.3058);
+  return toSupplyPyeong(sqm);
 }
 
 /** "경희궁자이(2단지)" → "경희궁자이" (단지 번호 제거) */

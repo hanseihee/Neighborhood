@@ -8,7 +8,7 @@ import LineChart from '@/components/LineChart';
 import TradeTable from '@/components/TradeTable';
 import ApartmentList from '@/components/ApartmentList';
 import { fetchTrades, calculateMonthlyStats } from '@/lib/api';
-import { formatPrice } from '@/lib/utils';
+import { formatPrice, toSupplyPyeong } from '@/lib/utils';
 import { getRegionName } from '@/lib/constants';
 import type { AptTrade } from '@/lib/types';
 
@@ -45,7 +45,7 @@ export default function HomePage() {
   const areaGroups = useMemo(() => {
     const map = new Map<number, number>();
     for (const t of trades) {
-      const pyeong = Math.round(t.전용면적 / 3.3058);
+      const pyeong = toSupplyPyeong(t.전용면적);
       const group = Math.floor(pyeong / 10) * 10;
       map.set(group, (map.get(group) || 0) + 1);
     }
@@ -57,7 +57,7 @@ export default function HomePage() {
   const filteredTrades = useMemo(() => {
     if (selectedArea === null) return trades;
     return trades.filter((t) => {
-      const pyeong = Math.round(t.전용면적 / 3.3058);
+      const pyeong = toSupplyPyeong(t.전용면적);
       return Math.floor(pyeong / 10) * 10 === selectedArea;
     });
   }, [trades, selectedArea]);
@@ -112,7 +112,7 @@ export default function HomePage() {
                 onClick={() => setSelectedArea(null)}
                 className={`px-3 py-1.5 text-[14px] font-medium rounded-lg transition-all cursor-pointer ${
                   selectedArea === null
-                    ? 'bg-slate-800 text-white'
+                    ? 'bg-primary-600 text-white'
                     : 'text-slate-500 hover:bg-slate-100'
                 }`}
               >
@@ -124,7 +124,7 @@ export default function HomePage() {
                   onClick={() => setSelectedArea(g.group)}
                   className={`px-3 py-1.5 text-[14px] font-medium rounded-lg transition-all cursor-pointer ${
                     selectedArea === g.group
-                      ? 'bg-slate-800 text-white'
+                      ? 'bg-primary-600 text-white'
                       : 'text-slate-500 hover:bg-slate-100'
                   }`}
                 >
@@ -204,7 +204,7 @@ export default function HomePage() {
                   아파트별 시세
                 </h2>
                 <p className="text-[14px] text-slate-400 mt-0.5">
-                  전용면적 기준 · 최근 거래 평균
+                  공급면적 기준 · 최근 거래 평균
                 </p>
               </div>
               <ApartmentList

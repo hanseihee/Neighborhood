@@ -47,7 +47,7 @@ export default function ApartmentList({ trades, selectedApt, onSelectApt }: Apar
             onClick={() => setSortMode(mode)}
             className={`px-3 py-1.5 rounded-md text-[14px] font-medium transition-colors cursor-pointer ${
               sortMode === mode
-                ? 'bg-slate-800 text-white'
+                ? 'bg-primary-600 text-white'
                 : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
             }`}
           >

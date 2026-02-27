@@ -84,7 +84,10 @@ async function fetchFromMolit(
   const queryString = `serviceKey=${apiKey}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&numOfRows=9999&pageNo=1`;
   const fullUrl = `${baseUrl}?${queryString}`;
 
-  const res = await fetch(fullUrl, { cache: 'no-store' });
+  const res = await fetch(fullUrl, {
+    cache: 'no-store',
+    headers: { 'User-Agent': 'Mozilla/5.0' },
+  });
   const xml = await res.text();
 
   // resultCode 체크 (정상: "000")

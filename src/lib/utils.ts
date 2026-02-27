@@ -15,9 +15,14 @@ export function formatPriceShort(manwon: number): string {
   return `${manwon.toLocaleString()}만`;
 }
 
-/** ㎡ → "84.99㎡ (25평)" */
+/** 전용면적(㎡) → 공급면적 기준 평수 (네이버 부동산과 동일한 분류) */
+export function toSupplyPyeong(exclusiveSqm: number): number {
+  return Math.round((exclusiveSqm * 1.3) / 3.3058);
+}
+
+/** ㎡ → "84.99㎡ (33평)" - 공급면적 기준 평수 표시 */
 export function formatArea(sqm: number): string {
-  const pyeong = Math.round(sqm / 3.3058);
+  const pyeong = toSupplyPyeong(sqm);
   return `${sqm}㎡(${pyeong}평)`;
 }
 
