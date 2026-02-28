@@ -1,4 +1,4 @@
-import type { AptTrade, MonthlyStats } from './types';
+import type { AptTrade, MonthlyStats, SearchResult, MetroStatsResponse } from './types';
 import { toSupplyPyeong } from './utils';
 
 /** 실거래 데이터 fetch */
@@ -8,6 +8,48 @@ export async function fetchTrades(
 ): Promise<{ trades: AptTrade[] }> {
   const res = await fetch(`/api/trades?lawdCd=${lawdCd}&months=${months}`);
   if (!res.ok) throw new Error('데이터를 불러올 수 없습니다');
+  return res.json();
+}
+
+/** 아파트 이름 검색 */
+export async function searchApartments(
+  query: string,
+  limit: number = 10
+): Promise<SearchResult[]> {
+  const res = await fetch(
+    `/api/search?q=${encodeURIComponent(query)}&limit=${limit}`
+  );
+  if (!res.ok) throw new Error('검색에 실패했습니다');
+  const data = await res.json();
+  return data.results;
+}
+
+/** 시도별 집계 데이터 fetch */
+export async function fetchMetroStats(
+  sido: string,
+  months: number = 36
+): Promise<MetroStatsResponse> {
+  const res = await fetch(`/api/metro-stats?sido=${sido}&months=${months}`);
+  if (!res.ok) throw new Error('시도별 데이터를 불러올 수 없습니다');
+  return res.json();
+}
+
+/** 시군구별 집계 데이터 fetch */
+export async function fetchDistrictStats(
+  code: string,
+  months: number = 36
+): Promise<MetroStatsResponse> {
+  const res = await fetch(`/api/district-stats?code=${code}&months=${months}`);
+  if (!res.ok) throw new Error('시군구별 데이터를 불러올 수 없습니다');
+  return res.json();
+}
+
+/** 시군구 랭킹 데이터 fetch */
+export async function fetchDistrictRanking(): Promise<{
+  rankings: { code: string; avgPrice: number; tradeCount: number }[];
+}> {
+  const res = await fetch('/api/district-ranking');
+  if (!res.ok) throw new Error('랭킹 데이터를 불러올 수 없습니다');
   return res.json();
 }
 
@@ -97,3 +139,92 @@ export function getApartmentSummary(trades: AptTrade[]) {
 }
 
 export type ApartmentSummary = ReturnType<typeof getApartmentSummary>[number];
+
+/** 급등/급락 아이템 */
+export interface PriceChangeItem {
+  아파트: string;
+  pyeong: number;
+  법정동: string;
+  recentAvg: number;
+  prevAvg: number;
+  changeRate: number;
+  recentCount: number;
+  prevCount: number;
+}
+
+/** 거래 목록 → 최근 3개월 vs 이전 3개월 비교 급등/급락 TOP5 */
+export function getPriceChanges(
+  trades: AptTrade[]
+): { up: PriceChangeItem[]; down: PriceChangeItem[] } {
+  if (trades.length === 0) return { up: [], down: [] };
+
+  // 월 목록 추출 및 정렬
+  const monthSet = new Set<string>();
+  for (const t of trades) {
+    monthSet.add(`${t.년}${String(t.월).padStart(2, '0')}`);
+  }
+  const sortedMonths = [...monthSet].sort().reverse();
+  if (sortedMonths.length < 4) return { up: [], down: [] };
+
+  const recentMonths = new Set(sortedMonths.slice(0, 3));
+  const prevMonths = new Set(sortedMonths.slice(3, 6));
+
+  // 아파트+평수 기준 그룹핑
+  const byApt: Record<
+    string,
+    { recent: number[]; prev: number[]; trade: AptTrade; pyeong: number }
+  > = {};
+
+  for (const t of trades) {
+    const p = toPyeong(t.전용면적);
+    const name = baseAptName(t.아파트);
+    const key = `${name}_${p}`;
+    const month = `${t.년}${String(t.월).padStart(2, '0')}`;
+
+    if (!byApt[key]) byApt[key] = { recent: [], prev: [], trade: t, pyeong: p };
+
+    if (recentMonths.has(month)) {
+      byApt[key].recent.push(t.거래금액);
+    } else if (prevMonths.has(month)) {
+      byApt[key].prev.push(t.거래금액);
+    }
+  }
+
+  const items: PriceChangeItem[] = [];
+
+  for (const data of Object.values(byApt)) {
+    if (data.recent.length < 2 || data.prev.length < 2) continue;
+
+    const recentAvg = Math.round(
+      data.recent.reduce((a, b) => a + b, 0) / data.recent.length
+    );
+    const prevAvg = Math.round(
+      data.prev.reduce((a, b) => a + b, 0) / data.prev.length
+    );
+    const changeRate =
+      Math.round(((recentAvg - prevAvg) / prevAvg) * 1000) / 10;
+
+    items.push({
+      아파트: baseAptName(data.trade.아파트),
+      pyeong: data.pyeong,
+      법정동: data.trade.법정동,
+      recentAvg,
+      prevAvg,
+      changeRate,
+      recentCount: data.recent.length,
+      prevCount: data.prev.length,
+    });
+  }
+
+  const up = items
+    .filter((i) => i.changeRate > 0)
+    .sort((a, b) => b.changeRate - a.changeRate)
+    .slice(0, 5);
+
+  const down = items
+    .filter((i) => i.changeRate < 0)
+    .sort((a, b) => a.changeRate - b.changeRate)
+    .slice(0, 5);
+
+  return { up, down };
+}

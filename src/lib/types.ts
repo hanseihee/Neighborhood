@@ -33,6 +33,23 @@ export interface MonthlyStats {
   changeRate: number | null; // 전월 대비 %
 }
 
+/** 아파트 검색 결과 */
+export interface SearchResult {
+  apartmentName: string;
+  districtCode: string;
+  districtName: string;
+  dongName: string;
+  recentPrice: number;
+  tradeCount: number;
+}
+
+/** 시도별 집계 응답 */
+export interface MetroStatsResponse {
+  stats: MonthlyStats[];
+  totalCount: number;
+  latestAvgPrice: number;
+}
+
 /** 시/군/구 옵션 */
 export interface DistrictOption {
   code: string;

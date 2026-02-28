@@ -37,7 +37,9 @@ export default function StatCard({ label, value, change, sub, icon }: StatCardPr
           <span className="text-[13px] text-slate-400">전월대비</span>
         </div>
       )}
-      {sub && !change && <p className="mt-3 text-[13px] text-slate-400">{sub}</p>}
+      {sub && (
+        <p className={`${change ? 'mt-1' : 'mt-3'} text-[13px] text-slate-400`}>{sub}</p>
+      )}
     </div>
   );
 }

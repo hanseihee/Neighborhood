@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, MapPin } from 'lucide-react';
+import { ChevronDown, MapPin, Star } from 'lucide-react';
 import type { AptTrade } from '@/lib/types';
 import { getApartmentSummary } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
@@ -14,9 +14,11 @@ interface ApartmentListProps {
   trades: AptTrade[];
   selectedApt?: string | null;
   onSelectApt?: (aptName: string | null) => void;
+  favoriteNames?: Set<string>;
+  onToggleFavorite?: (aptName: string, avgPrice: number) => void;
 }
 
-export default function ApartmentList({ trades, selectedApt, onSelectApt }: ApartmentListProps) {
+export default function ApartmentList({ trades, selectedApt, onSelectApt, favoriteNames, onToggleFavorite }: ApartmentListProps) {
   const [sortMode, setSortMode] = useState<SortMode>('avg');
   const [showAll, setShowAll] = useState(false);
   const rawApartments = getApartmentSummary(trades);
@@ -125,6 +127,23 @@ export default function ApartmentList({ trades, selectedApt, onSelectApt }: Apar
                   {sortMode === 'max' ? '최고가' : '평균'}
                 </p>
               </div>
+
+              {onToggleFavorite && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(apt.아파트, apt.avgPrice);
+                  }}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors cursor-pointer flex-shrink-0 ${
+                    favoriteNames?.has(apt.아파트)
+                      ? 'text-primary-500 hover:bg-primary-50'
+                      : 'text-slate-300 hover:text-primary-400 hover:bg-primary-50'
+                  }`}
+                  title={favoriteNames?.has(apt.아파트) ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+                >
+                  <Star size={15} fill={favoriteNames?.has(apt.아파트) ? 'currentColor' : 'none'} />
+                </button>
+              )}
 
               <button
                 onClick={(e) => {

@@ -118,21 +118,29 @@ export default function LineChart({ data, height = 280 }: LineChartProps) {
           </g>
         ))}
 
-        {/* X labels */}
-        {data.map((d, i) => (
-          <text
-            key={i}
-            x={getX(i)}
-            y={svgHeight - 10}
-            textAnchor="middle"
-            fill={hoveredIndex === i ? '#0D9488' : '#94A3B8'}
-            fontSize="12"
-            fontWeight={hoveredIndex === i ? '600' : '400'}
-            fontFamily="inherit"
-          >
-            {d.month.slice(2, 4)}.{d.month.slice(4)}
-          </text>
-        ))}
+        {/* X labels — 최대 ~10개만 표시하여 겹침 방지 */}
+        {data.map((d, i) => {
+          const step = Math.max(1, Math.ceil(data.length / 10));
+          const isFirst = i === 0;
+          const isLast = i === data.length - 1;
+          const isStep = i % step === 0;
+          const isHovered = hoveredIndex === i;
+          if (!isFirst && !isLast && !isStep && !isHovered) return null;
+          return (
+            <text
+              key={i}
+              x={getX(i)}
+              y={svgHeight - 10}
+              textAnchor="middle"
+              fill={isHovered ? '#0D9488' : '#94A3B8'}
+              fontSize="12"
+              fontWeight={isHovered ? '600' : '400'}
+              fontFamily="inherit"
+            >
+              {d.month.slice(2, 4)}.{d.month.slice(4)}
+            </text>
+          );
+        })}
 
         {/* Hover vertical line */}
         {hoveredIndex !== null && (

@@ -19,6 +19,9 @@
   --color-up-bg: #FFF1F2;
   --color-down: #3B82F6;
   --color-down-bg: #EFF6FF;
+
+  --color-compare: #8B5CF6;
+  --color-compare-bg: #F5F3FF;
 }
 
 body {
