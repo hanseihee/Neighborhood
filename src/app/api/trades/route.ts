@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { getSupabase } from '@/lib/supabase';
 import type { AptTrade } from '@/lib/types';
 
 const CACHE_MAX_AGE = 86400; // 24시간
@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
     const startMonth = startDate.getMonth() + 1;
 
     // district_code 매핑 처리
+    const supabase = getSupabase();
     const codes = DISTRICT_CODE_MAP[lawdCd] || [lawdCd];
 
     // Supabase 기본 limit(1000건) 초과 대응: 페이지네이션
