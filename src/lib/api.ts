@@ -53,6 +53,29 @@ export async function fetchDistrictRanking(): Promise<{
   return res.json();
 }
 
+/** 아파트 랭킹 데이터 fetch */
+export interface ApartmentRankingItem {
+  apartmentName: string;
+  districtCode: string;
+  districtName: string;
+  dongName: string;
+  recentPrice: number;
+  tradeCount: number;
+}
+
+export async function fetchApartmentRanking(
+  sido: string,
+  options?: { minTrades?: number; minPrice?: number; maxPrice?: number }
+): Promise<{ apartments: ApartmentRankingItem[]; totalCount: number }> {
+  const params = new URLSearchParams({ sido });
+  if (options?.minTrades !== undefined) params.set('minTrades', String(options.minTrades));
+  if (options?.minPrice !== undefined) params.set('minPrice', String(options.minPrice));
+  if (options?.maxPrice !== undefined) params.set('maxPrice', String(options.maxPrice));
+  const res = await fetch(`/api/apartment-ranking?${params}`);
+  if (!res.ok) throw new Error('아파트 랭킹 데이터를 불러올 수 없습니다');
+  return res.json();
+}
+
 /** 거래 목록 → 월별 통계 계산 */
 export function calculateMonthlyStats(trades: AptTrade[]): MonthlyStats[] {
   const byMonth: Record<string, AptTrade[]> = {};

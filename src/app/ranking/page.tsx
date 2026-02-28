@@ -100,6 +100,19 @@ export default function RankingPage() {
         </p>
       </div>
 
+      {/* 탭 */}
+      <div className="flex gap-1 bg-slate-50 rounded-xl p-1 w-fit">
+        <span className="px-4 py-2 rounded-lg text-[14px] font-medium text-primary-600 bg-white shadow-sm">
+          시군구 티어
+        </span>
+        <Link
+          href="/ranking/apartment"
+          className="px-4 py-2 rounded-lg text-[14px] font-medium text-slate-400 hover:text-slate-600 hover:bg-white transition-colors"
+        >
+          아파트 티어
+        </Link>
+      </div>
+
       {/* 티어 범례 */}
       <div className="flex flex-wrap gap-2">
         {TIERS.map(tier => (
