@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { REGIONS } from '@/lib/constants';
 
@@ -21,7 +21,21 @@ export default function RegionSelector({
   selectedRegion,
   onRegionChange,
 }: RegionSelectorProps) {
-  const [sidoCode, setSidoCode] = useState('11');
+  const [sidoCode, setSidoCode] = useState(() => {
+    if (selectedRegion && selectedRegion.length >= 2) {
+      return selectedRegion.slice(0, 2);
+    }
+    return '11';
+  });
+
+  useEffect(() => {
+    if (selectedRegion && selectedRegion.length >= 2) {
+      const newSido = selectedRegion.slice(0, 2);
+      if (newSido !== sidoCode) {
+        setSidoCode(newSido);
+      }
+    }
+  }, [selectedRegion]);
 
   const currentSido = REGIONS.find((r) => r.code === sidoCode);
 

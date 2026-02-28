@@ -38,3 +38,51 @@ export function isFavorite(aptName: string, regionCode: string): boolean {
     (f) => f.aptName === aptName && f.regionCode === regionCode
   );
 }
+
+// --- 시군구 즐겨찾기 ---
+
+const DISTRICT_FAVORITES_KEY = 'neighborhood-district-favorites';
+const LAST_REGION_KEY = 'neighborhood-last-region';
+
+export function getDistrictFavorites(): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(DISTRICT_FAVORITES_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function addDistrictFavorite(code: string): void {
+  const favs = getDistrictFavorites();
+  if (favs.includes(code)) return;
+  favs.push(code);
+  localStorage.setItem(DISTRICT_FAVORITES_KEY, JSON.stringify(favs));
+}
+
+export function removeDistrictFavorite(code: string): void {
+  const favs = getDistrictFavorites().filter((c) => c !== code);
+  localStorage.setItem(DISTRICT_FAVORITES_KEY, JSON.stringify(favs));
+}
+
+export function isDistrictFavorite(code: string): boolean {
+  return getDistrictFavorites().includes(code);
+}
+
+export function getLastRegion(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    return localStorage.getItem(LAST_REGION_KEY) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function setLastRegion(code: string): void {
+  try {
+    localStorage.setItem(LAST_REGION_KEY, code);
+  } catch {
+    // ignore
+  }
+}

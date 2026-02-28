@@ -8,6 +8,7 @@ import {
   ArrowDownUp,
   X,
   GitCompareArrows,
+  Star,
 } from 'lucide-react';
 import RegionSelector from '@/components/RegionSelector';
 import ApartmentSearch from '@/components/ApartmentSearch';
@@ -31,6 +32,12 @@ import {
   addFavorite,
   removeFavorite,
   isFavorite as checkIsFavorite,
+  getDistrictFavorites,
+  addDistrictFavorite,
+  removeDistrictFavorite,
+  isDistrictFavorite,
+  getLastRegion,
+  setLastRegion,
 } from '@/lib/favorites';
 import type { FavoriteApt } from '@/lib/favorites';
 import type { AptTrade, SearchResult } from '@/lib/types';
@@ -52,10 +59,33 @@ export default function HomePage() {
 
   // 즐겨찾기
   const [favorites, setFavorites] = useState<FavoriteApt[]>([]);
+  const [districtFavs, setDistrictFavs] = useState<string[]>([]);
 
   useEffect(() => {
     setFavorites(getFavorites());
+    setDistrictFavs(getDistrictFavorites());
+    const saved = getLastRegion();
+    if (saved) setRegionCode(saved);
   }, []);
+
+  // 마지막 선택 시군구 저장
+  useEffect(() => {
+    if (regionCode) {
+      setLastRegion(regionCode);
+    }
+  }, [regionCode]);
+
+  const isDistFav = regionCode ? isDistrictFavorite(regionCode) : false;
+
+  const handleToggleDistrictFav = useCallback(() => {
+    if (!regionCode) return;
+    if (isDistrictFavorite(regionCode)) {
+      removeDistrictFavorite(regionCode);
+    } else {
+      addDistrictFavorite(regionCode);
+    }
+    setDistrictFavs(getDistrictFavorites());
+  }, [regionCode]);
 
   const handleSelectApt = useCallback((aptName: string | null) => {
     setSelectedApt(aptName);
@@ -266,17 +296,30 @@ export default function HomePage() {
           />
           <ApartmentSearch onSelect={handleSearchSelect} />
           {regionCode && (
-            <button
-              onClick={() => setCompareMode((prev) => !prev)}
-              className={`h-10 px-4 rounded-lg text-[14px] font-medium transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 ${
-                compareMode
-                  ? 'bg-compare text-white'
-                  : 'bg-white border border-slate-200 text-slate-500 hover:border-compare hover:text-compare'
-              }`}
-            >
-              <GitCompareArrows size={15} />
-              비교
-            </button>
+            <>
+              <button
+                onClick={handleToggleDistrictFav}
+                className={`h-10 w-10 rounded-lg transition-all cursor-pointer flex items-center justify-center flex-shrink-0 ${
+                  isDistFav
+                    ? 'bg-amber-50 text-amber-500 border border-amber-200'
+                    : 'bg-white border border-slate-200 text-slate-400 hover:border-amber-300 hover:text-amber-400'
+                }`}
+                title={isDistFav ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+              >
+                <Star size={16} fill={isDistFav ? 'currentColor' : 'none'} />
+              </button>
+              <button
+                onClick={() => setCompareMode((prev) => !prev)}
+                className={`h-10 px-4 rounded-lg text-[14px] font-medium transition-all cursor-pointer flex items-center gap-1.5 flex-shrink-0 ${
+                  compareMode
+                    ? 'bg-compare text-white'
+                    : 'bg-white border border-slate-200 text-slate-500 hover:border-compare hover:text-compare'
+                }`}
+              >
+                <GitCompareArrows size={15} />
+                비교
+              </button>
+            </>
           )}
         </div>
 
@@ -293,6 +336,32 @@ export default function HomePage() {
             {compareLoading && (
               <div className="w-4 h-4 border-2 border-compare border-t-transparent rounded-full animate-spin flex-shrink-0" />
             )}
+          </div>
+        )}
+
+        {/* 시군구 즐겨찾기 칩 */}
+        {districtFavs.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[13px] text-slate-400 mr-0.5">
+              <Star size={13} className="inline -mt-0.5 mr-0.5" />
+              즐겨찾기
+            </span>
+            {districtFavs.map((code) => (
+              <button
+                key={code}
+                onClick={() => {
+                  pendingAptRef.current = null;
+                  setRegionCode(code);
+                }}
+                className={`px-3 py-1.5 text-[13px] font-medium rounded-lg transition-all cursor-pointer ${
+                  regionCode === code
+                    ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600'
+                }`}
+              >
+                {getRegionName(code)}
+              </button>
+            ))}
           </div>
         )}
       </div>
