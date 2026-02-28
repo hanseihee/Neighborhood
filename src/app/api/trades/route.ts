@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '@/lib/supabase';
 import type { AptTrade } from '@/lib/types';
 
-// Vercel Hobby 플랜 Function 타임아웃 설정 (기본 10초 → 30초)
-export const maxDuration = 30;
-
-const BATCH_SIZE = 6;
 const CACHE_MAX_AGE = 86400; // 24시간
 const STALE_REVALIDATE = 3600; // 1시간
+const PAGE_SIZE = 1000; // Supabase 기본 row limit
+
+/**
+ * 프론트엔드 지역코드 → DB에 실제 저장된 sggCd 매핑
+ * MOLIT API가 반환하는 sggCd가 요청 LAWD_CD와 다른 경우
+ */
+const DISTRICT_CODE_MAP: Record<string, string[]> = {
+  '41170': ['41171'],                     // 안양시 만안구
+  '41190': ['41192', '41194', '41196'],   // 부천시 (원미구,소사구,오정구)
+  '41270': ['41271'],                     // 안산시 상록구
+  '41460': ['41465'],                     // 용인시 처인구
+  '41590': ['41591', '41595'],            // 화성시
+};
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -20,44 +30,73 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const apiKey = process.env.MOLIT_API_KEY;
-
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: 'MOLIT_API_KEY가 설정되지 않았습니다' },
-      { status: 500 }
-    );
-  }
-
-  // 실제 API 호출
   try {
+    // 조회 기간 계산
     const now = new Date();
-    const monthList: string[] = [];
-    for (let i = 0; i < months; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      monthList.push(`${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`);
-    }
+    const startDate = new Date(now.getFullYear(), now.getMonth() - months, 1);
+    const startYear = startDate.getFullYear();
+    const startMonth = startDate.getMonth() + 1;
 
-    // 6개씩 배치 병렬 호출 (24회 순차 → 4배치 병렬 = ~3-5초)
-    const allTrades: AptTrade[] = [];
-    for (let i = 0; i < monthList.length; i += BATCH_SIZE) {
-      const batch = monthList.slice(i, i + BATCH_SIZE);
-      const results = await Promise.all(
-        batch.map((dealYmd) => fetchFromMolit(apiKey, lawdCd, dealYmd))
-      );
-      for (const trades of results) {
-        allTrades.push(...trades);
+    // district_code 매핑 처리
+    const codes = DISTRICT_CODE_MAP[lawdCd] || [lawdCd];
+
+    // Supabase 기본 limit(1000건) 초과 대응: 페이지네이션
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allRows: any[] = [];
+    let from = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('apt_trades')
+        .select('*')
+        .in('district_code', codes)
+        .or(
+          `deal_year.gt.${startYear},and(deal_year.eq.${startYear},deal_month.gte.${startMonth})`
+        )
+        .order('deal_year', { ascending: false })
+        .order('deal_month', { ascending: false })
+        .order('deal_day', { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        console.error('[Supabase] 쿼리 에러:', error);
+        return NextResponse.json(
+          { error: '데이터를 불러오는 중 오류가 발생했습니다' },
+          { status: 502 }
+        );
       }
+
+      allRows.push(...(data || []));
+      if (!data || data.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
     }
 
-    allTrades.sort((a, b) => {
-      const dateA = a.년 * 10000 + a.월 * 100 + a.일;
-      const dateB = b.년 * 10000 + b.월 * 100 + b.일;
-      return dateB - dateA;
-    });
+    // DB 컬럼(영문) → AptTrade 인터페이스(한글) 변환
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const trades: AptTrade[] = allRows.map((row: any) => ({
+      아파트: row.apartment_name ?? '',
+      거래금액: row.deal_amount ?? 0,
+      년: row.deal_year ?? 0,
+      월: row.deal_month ?? 0,
+      일: row.deal_day ?? 0,
+      전용면적: row.exclusive_area ?? 0,
+      층: row.floor ?? 0,
+      건축년도: row.build_year ?? 0,
+      법정동: row.dong_name ?? '',
+      지역코드: row.district_code ?? lawdCd,
+      도로명: row.road_name ?? '',
+      지번: row.jibun ?? '',
+      거래유형: row.deal_type ?? '',
+      매도자: row.seller_type ?? '',
+      매수자: row.buyer_type ?? '',
+      중개사소재지: row.agent_location ?? '',
+      등기일자: row.reg_date ?? '',
+      아파트동: row.apt_dong ?? '',
+      단지일련번호: row.apt_seq ?? '',
+      토지임대부: row.land_leasehold ?? '',
+    }));
 
     return NextResponse.json(
-      { trades: allTrades },
+      { trades },
       {
         headers: {
           'Cache-Control': `public, s-maxage=${CACHE_MAX_AGE}, stale-while-revalidate=${STALE_REVALIDATE}`,
@@ -65,104 +104,10 @@ export async function GET(request: NextRequest) {
       }
     );
   } catch (error) {
-    console.error('[MOLIT] API 에러:', error);
+    console.error('[Supabase] 에러:', error);
     return NextResponse.json(
       { error: '데이터를 불러오는 중 오류가 발생했습니다' },
       { status: 502 }
     );
   }
-}
-
-/** 국토교통부 실거래가 API 호출 */
-async function fetchFromMolit(
-  apiKey: string,
-  lawdCd: string,
-  dealYmd: string
-): Promise<AptTrade[]> {
-  // serviceKey는 이미 URL 인코딩된 상태 → 직접 문자열 삽입 (이중 인코딩 방지)
-  const baseUrl = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev';
-  const queryString = `serviceKey=${apiKey}&LAWD_CD=${lawdCd}&DEAL_YMD=${dealYmd}&numOfRows=9999&pageNo=1`;
-  const fullUrl = `${baseUrl}?${queryString}`;
-
-  const res = await fetch(fullUrl, {
-    cache: 'no-store',
-    headers: { 'User-Agent': 'Mozilla/5.0' },
-  });
-  const xml = await res.text();
-
-  // resultCode 체크 (정상: "000")
-  const resultCode = xml.match(/<resultCode>([^<]*)<\/resultCode>/)?.[1]?.trim();
-  const resultMsg = xml.match(/<resultMsg>([^<]*)<\/resultMsg>/)?.[1]?.trim();
-
-  if (resultCode && resultCode !== '000') {
-    console.error(`[MOLIT] API 에러: code=${resultCode}, msg=${resultMsg}`);
-    console.error(`[MOLIT] 응답:`, xml.substring(0, 500));
-    return [];
-  }
-
-  const trades = parseXmlResponse(xml, lawdCd);
-
-  if (trades.length === 0) {
-    console.warn(`[MOLIT] 0건. 응답 미리보기:`, xml.substring(0, 500));
-  }
-
-  return trades;
-}
-
-/**
- * XML 응답 파싱
- * 기술문서 기준 신규 API 영문 태그명 사용:
- *   aptNm(단지명), dealAmount(거래금액), dealYear(계약년도),
- *   dealMonth(계약월), dealDay(계약일), excluUseAr(전용면적),
- *   floor(층), buildYear(건축년도), umdNm(법정동),
- *   cdealType(해제여부), sggCd(법정동시군구코드)
- */
-function parseXmlResponse(xml: string, lawdCd: string): AptTrade[] {
-  const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || [];
-
-  return items
-    .map((item) => {
-      const get = (tag: string) => {
-        const match = item.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
-        if (!match) return '';
-        return match[1]
-          .trim()
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'");
-      };
-
-      // 해제된 거래 제외
-      const cdealType = get('cdealType');
-      if (cdealType === 'O') return null;
-
-      const dealAmount = parseInt(get('dealAmount').replace(/,/g, ''));
-      if (isNaN(dealAmount) || dealAmount <= 0) return null;
-
-      return {
-        아파트: get('aptNm'),
-        거래금액: dealAmount,
-        년: parseInt(get('dealYear')),
-        월: parseInt(get('dealMonth')),
-        일: parseInt(get('dealDay')),
-        전용면적: parseFloat(get('excluUseAr')),
-        층: parseInt(get('floor')),
-        건축년도: parseInt(get('buildYear')),
-        법정동: get('umdNm'),
-        지역코드: get('sggCd') || lawdCd,
-        도로명: get('roadNm'),
-        지번: get('jibun'),
-        거래유형: get('dealingGbn'),
-        매도자: get('slerGbn'),
-        매수자: get('buyerGbn'),
-        중개사소재지: get('estateAgentSggNm'),
-        등기일자: get('rgstDate'),
-        아파트동: get('aptDong'),
-        단지일련번호: get('aptSeq'),
-        토지임대부: get('landLeaseholdGbn'),
-      } as AptTrade;
-    })
-    .filter((t): t is AptTrade => t !== null);
 }
