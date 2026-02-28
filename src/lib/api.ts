@@ -4,7 +4,7 @@ import { toSupplyPyeong } from './utils';
 /** 실거래 데이터 fetch */
 export async function fetchTrades(
   lawdCd: string,
-  months: number = 6
+  months: number = 36
 ): Promise<{ trades: AptTrade[] }> {
   const res = await fetch(`/api/trades?lawdCd=${lawdCd}&months=${months}`);
   if (!res.ok) throw new Error('데이터를 불러올 수 없습니다');

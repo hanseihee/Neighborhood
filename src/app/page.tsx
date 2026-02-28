@@ -36,7 +36,7 @@ export default function HomePage() {
     setTrades([]);
     setSelectedArea(30);
     setSelectedApt(null);
-    fetchTrades(regionCode, 24)
+    fetchTrades(regionCode, 36)
       .then((data) => setTrades(data.trades))
       .catch(console.error)
       .finally(() => setLoading(false));
@@ -83,7 +83,7 @@ export default function HomePage() {
           아파트 실거래가
         </h1>
         <p className="mt-1.5 text-[15px] text-slate-400">
-          국토교통부 실거래가 공공데이터 기반 · 최근 2년
+          국토교통부 실거래가 공공데이터 기반 · 최근 3년
         </p>
       </div>
 
@@ -148,7 +148,7 @@ export default function HomePage() {
             <StatCard
               label="거래 건수"
               value={`${totalCount}건`}
-              sub="최근 2년 누적"
+              sub="최근 3년 누적"
               icon={<BarChart3 size={16} />}
             />
             <StatCard
@@ -236,7 +236,7 @@ export default function HomePage() {
                     )}
                   </div>
                   <p className="text-[14px] text-slate-400 mt-0.5">
-                    {regionName} · 최근 2년
+                    {regionName} · 최근 3년
                   </p>
                 </div>
                 <span className="text-[14px] text-slate-400 tabular-nums">

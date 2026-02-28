@@ -21,7 +21,7 @@ const DISTRICT_CODE_MAP: Record<string, string[]> = {
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const lawdCd = searchParams.get('lawdCd');
-  const months = parseInt(searchParams.get('months') || '6');
+  const months = parseInt(searchParams.get('months') || '36');
 
   if (!lawdCd) {
     return NextResponse.json(
