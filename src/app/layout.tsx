@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     url: SITE_URL,
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: `${SITE_NAME} | 아파트 실거래가 · 전월세`,
     description: SITE_DESCRIPTION,
   },

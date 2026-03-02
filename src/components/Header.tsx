@@ -7,11 +7,11 @@ import { Building2, Menu, X } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', label: '시세' },
+  { href: '/find', label: '아파트 찾기' },
   { href: '/metro', label: '시도 비교' },
   { href: '/district', label: '시군구 비교' },
   { href: '/volume', label: '거래량' },
   { href: '/ranking', label: '티어' },
-  { href: '/find', label: '아파트 찾기' },
 ];
 
 export default function Header() {

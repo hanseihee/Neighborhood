@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Minus, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { fetchApartmentRanking, fetchTrades, fetchRents, type ApartmentRankingItem } from '@/lib/api';
 import { useTradeType, TradeTypeToggle } from '@/lib/trade-type';
@@ -27,6 +27,7 @@ export default function FindPage() {
   const [totalApts, setTotalApts] = useState(0);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [maxAge, setMaxAge] = useState('10');
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [selectedArea, setSelectedArea] = useState<number | null>(null);
   const [expandedApts, setExpandedApts] = useState<Set<string>>(new Set());
@@ -70,9 +71,11 @@ export default function FindPage() {
     try {
       const minPrice = hasMin ? minNum * 1000 : undefined; // 천만원 → 만원
       const maxPrice = hasMax ? maxNum * 1000 : undefined;
+      const ageNum = parseInt(maxAge, 10);
       const data = await fetchApartmentRanking(sido, {
         minPrice, maxPrice, type: tradeType,
         district: district || undefined,
+        maxAge: !isNaN(ageNum) && ageNum > 0 ? ageNum : undefined,
       });
 
       // 시군구별 그룹핑
@@ -271,6 +274,45 @@ export default function FindPage() {
             ))}
           </select>
         )}
+
+        {/* 준공연도 필터 */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] text-slate-400 flex-shrink-0">준공</span>
+          <div className="flex items-center rounded-xl border border-slate-200 bg-white overflow-hidden">
+            <button
+              type="button"
+              onClick={() => {
+                const cur = parseInt(maxAge, 10);
+                if (!isNaN(cur) && cur > 1) setMaxAge(String(cur - 1));
+              }}
+              className="w-9 h-[42px] flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer border-r border-slate-200"
+            >
+              <Minus size={14} />
+            </button>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={99}
+              value={maxAge}
+              onChange={e => setMaxAge(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              placeholder="—"
+              className="w-10 text-center py-2.5 text-[15px] text-slate-700 bg-transparent focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const cur = parseInt(maxAge, 10);
+                setMaxAge(String(isNaN(cur) ? 1 : Math.min(cur + 1, 99)));
+              }}
+              className="w-9 h-[42px] flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer border-l border-slate-200"
+            >
+              <Plus size={14} />
+            </button>
+          </div>
+          <span className="text-[13px] text-slate-400 flex-shrink-0">년 이내</span>
+        </div>
 
         <button
           onClick={handleSearch}

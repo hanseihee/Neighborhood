@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const minTrades = parseInt(searchParams.get('minTrades') || '3', 10);
     const minPrice = searchParams.get('minPrice') ? parseInt(searchParams.get('minPrice')!, 10) : undefined;
     const maxPrice = searchParams.get('maxPrice') ? parseInt(searchParams.get('maxPrice')!, 10) : undefined;
+    const maxAge = searchParams.get('maxAge') ? parseInt(searchParams.get('maxAge')!, 10) : undefined;
 
     if (!sido) {
       return NextResponse.json(
@@ -66,6 +67,10 @@ export async function GET(request: NextRequest) {
     }
     if (maxPrice !== undefined) {
       query = query.lt(priceCol, maxPrice);
+    }
+    if (maxAge !== undefined && maxAge > 0) {
+      const minBuildYear = new Date().getFullYear() - maxAge;
+      query = query.gte('build_year', minBuildYear);
     }
 
     const built = query.order(priceCol, { ascending: false });

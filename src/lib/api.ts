@@ -83,7 +83,7 @@ export interface ApartmentRankingItem {
 
 export async function fetchApartmentRanking(
   sido: string,
-  options?: { minTrades?: number; minPrice?: number; maxPrice?: number; type?: TradeType; district?: string }
+  options?: { minTrades?: number; minPrice?: number; maxPrice?: number; type?: TradeType; district?: string; maxAge?: number }
 ): Promise<{ apartments: ApartmentRankingItem[]; totalCount: number }> {
   const params = new URLSearchParams({ sido });
   if (options?.minTrades !== undefined) params.set('minTrades', String(options.minTrades));
@@ -91,6 +91,7 @@ export async function fetchApartmentRanking(
   if (options?.maxPrice !== undefined) params.set('maxPrice', String(options.maxPrice));
   if (options?.type) params.set('type', options.type);
   if (options?.district) params.set('district', options.district);
+  if (options?.maxAge !== undefined) params.set('maxAge', String(options.maxAge));
   const res = await fetch(`/api/apartment-ranking?${params}`);
   if (!res.ok) throw new Error('아파트 랭킹 데이터를 불러올 수 없습니다');
   return res.json();
