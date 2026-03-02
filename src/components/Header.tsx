@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: '/district', label: '시군구 비교' },
   { href: '/volume', label: '거래량' },
   { href: '/ranking', label: '티어' },
+  { href: '/find', label: '아파트 찾기' },
 ];
 
 export default function Header() {

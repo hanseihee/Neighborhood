@@ -28,9 +28,16 @@ export async function GET(request: NextRequest) {
     const minPrice = searchParams.get('minPrice') ? parseInt(searchParams.get('minPrice')!, 10) : undefined;
     const maxPrice = searchParams.get('maxPrice') ? parseInt(searchParams.get('maxPrice')!, 10) : undefined;
 
-    if (!sido || !/^\d{2}$/.test(sido)) {
+    if (!sido) {
       return NextResponse.json(
-        { error: '시도 코드(sido)가 필요합니다 (예: 11)' },
+        { error: '시도 코드(sido)가 필요합니다 (예: 11 또는 all)' },
+        { status: 400 }
+      );
+    }
+
+    if (sido !== 'all' && !/^\d{2}$/.test(sido)) {
+      return NextResponse.json(
+        { error: '시도 코드가 올바르지 않습니다 (예: 11 또는 all)' },
         { status: 400 }
       );
     }
@@ -40,9 +47,12 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('apartment_search')
       .select('apartment_name, district_code, dong_name, recent_price, trade_count')
-      .like('district_code', `${sido}%`)
       .gte('trade_count', minTrades)
       .not('recent_price', 'is', null);
+
+    if (sido !== 'all') {
+      query = query.like('district_code', `${sido}%`);
+    }
 
     if (minPrice !== undefined) {
       query = query.gte('recent_price', minPrice);
