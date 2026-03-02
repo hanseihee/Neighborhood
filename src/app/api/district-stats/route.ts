@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get('code');
   const months = parseInt(searchParams.get('months') || '36');
+  const type = searchParams.get('type') || 'trade';
 
   if (!code) {
     return NextResponse.json(
@@ -36,9 +37,15 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabase();
     const codes = DISTRICT_CODE_MAP[code] || [code];
 
+    const isRent = type === 'rent';
+    const table = isRent ? 'rent_district_monthly_summary' : 'district_monthly_summary';
+    const avgCol = isRent ? 'avg_deposit' : 'avg_price';
+    const maxCol = isRent ? 'max_deposit' : 'max_price';
+    const minCol = isRent ? 'min_deposit' : 'min_price';
+
     const { data, error } = await supabase
-      .from('district_monthly_summary')
-      .select('district_code, deal_year, deal_month, avg_price, max_price, min_price, trade_count')
+      .from(table)
+      .select(`district_code, deal_year, deal_month, ${avgCol}, ${maxCol}, ${minCol}, trade_count`)
       .in('district_code', codes)
       .gte('deal_year', startYear)
       .order('deal_year', { ascending: true })
@@ -63,23 +70,27 @@ export async function GET(request: NextRequest) {
     }
     const byMonth = new Map<string, MonthAgg>();
 
-    for (const row of rows) {
-      if (row.deal_year === startYear && row.deal_month < startMonth) continue;
+    for (const row of rows as Record<string, unknown>[]) {
+      if (row.deal_year === startYear && (row.deal_month as number) < startMonth) continue;
 
       const key = `${row.deal_year}${String(row.deal_month).padStart(2, '0')}`;
       const existing = byMonth.get(key);
+      const rowAvg = row[avgCol] as number;
+      const rowMax = row[maxCol] as number;
+      const rowMin = row[minCol] as number;
+      const tradeCount = row.trade_count as number;
 
       if (existing) {
-        existing.sumPrice += row.avg_price * row.trade_count;
-        existing.maxPrice = Math.max(existing.maxPrice, row.max_price);
-        existing.minPrice = Math.min(existing.minPrice, row.min_price);
-        existing.totalCount += row.trade_count;
+        existing.sumPrice += rowAvg * tradeCount;
+        existing.maxPrice = Math.max(existing.maxPrice, rowMax);
+        existing.minPrice = Math.min(existing.minPrice, rowMin);
+        existing.totalCount += tradeCount;
       } else {
         byMonth.set(key, {
-          sumPrice: row.avg_price * row.trade_count,
-          maxPrice: row.max_price,
-          minPrice: row.min_price,
-          totalCount: row.trade_count,
+          sumPrice: rowAvg * tradeCount,
+          maxPrice: rowMax,
+          minPrice: rowMin,
+          totalCount: tradeCount,
         });
       }
     }

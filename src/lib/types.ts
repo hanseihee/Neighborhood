@@ -23,6 +23,27 @@ export interface AptTrade {
   토지임대부: string;      // Y, N
 }
 
+/** 아파트 전월세 실거래 데이터 */
+export interface AptRent {
+  아파트: string;
+  보증금: number;        // 만원
+  월세: number;          // 만원 (0이면 전세)
+  년: number;
+  월: number;
+  일: number;
+  전용면적: number;
+  층: number;
+  건축년도: number;
+  법정동: string;
+  지역코드: string;
+  지번: string;
+  계약기간: string;
+  계약구분: string;      // 신규/갱신
+  갱신요구권사용: string;
+  종전보증금: number | null;
+  종전월세: number | null;
+}
+
 /** 월별 통계 */
 export interface MonthlyStats {
   month: string;           // YYYYMM

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchDistrictStats } from '@/lib/api';
+import { useTradeType, TradeTypeToggle } from '@/lib/trade-type';
 import { REGIONS } from '@/lib/constants';
 import type { MetroStatsResponse } from '@/lib/types';
 import MetroChart from '@/components/MetroChart';
@@ -41,6 +42,7 @@ for (const region of REGIONS) {
 const DEFAULT_CODES = ['11680', '41135']; // 강남구, 분당구
 
 export default function DistrictPage() {
+  const { tradeType } = useTradeType();
   const [entries, setEntries] = useState<DistrictEntry[]>(() =>
     DEFAULT_CODES.map((code, i) => ({
       code,
@@ -87,35 +89,29 @@ export default function DistrictPage() {
     setEntries((prev) => prev.filter((e) => e.code !== code));
   }, []);
 
-  // 선택 변경 시 데이터 fetch
+  // 선택 변경 또는 tradeType 변경 시 데이터 fetch (전체 리로드)
   useEffect(() => {
     if (entries.length === 0) return;
 
-    const toFetch = entries
-      .map((e) => e.code)
-      .filter((c) => !dataMap.has(c));
-
-    if (toFetch.length === 0) return;
+    const codes = entries.map((e) => e.code);
 
     setLoading(true);
+    setDataMap(new Map());
     Promise.all(
-      toFetch.map((code) =>
-        fetchDistrictStats(code).then((res) => ({ code, res }))
+      codes.map((code) =>
+        fetchDistrictStats(code, 36, tradeType).then((res) => ({ code, res }))
       )
     )
       .then((results) => {
-        setDataMap((prev) => {
-          const next = new Map(prev);
-          for (const { code, res } of results) {
-            next.set(code, res);
-          }
-          return next;
-        });
+        const next = new Map<string, MetroStatsResponse>();
+        for (const { code, res } of results) {
+          next.set(code, res);
+        }
+        setDataMap(next);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entries]);
+  }, [entries, tradeType]);
 
   // 차트에 표시할 코드
   const [visibleCodes, setVisibleCodes] = useState<Set<string>>(
@@ -228,8 +224,11 @@ export default function DistrictPage() {
           시군구별 비교
         </h1>
         <p className="mt-1.5 text-[15px] text-slate-400">
-          시군구 단위 평균 거래가 비교 · 최근 3년
+          시군구 단위 평균 {tradeType === 'rent' ? '보증금' : '거래가'} 비교 · 최근 3년
         </p>
+        <div className="mt-3">
+          <TradeTypeToggle />
+        </div>
       </div>
 
       {/* 시군구 선택기 */}
@@ -334,7 +333,7 @@ export default function DistrictPage() {
         <section className="bg-white rounded-2xl border border-slate-100/80 p-5 sm:p-6">
           <div className="mb-4">
             <h2 className="text-[17px] font-semibold text-slate-900">
-              평균 거래가 추이
+              평균 {tradeType === 'rent' ? '보증금' : '거래가'} 추이
             </h2>
             <p className="text-[14px] text-slate-400 mt-0.5">
               {chartSeries.map((s) => s.label).join(' · ')}
@@ -369,7 +368,7 @@ export default function DistrictPage() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-[17px] font-semibold text-slate-900">
-                월별 평균 거래가
+                월별 평균 {tradeType === 'rent' ? '보증금' : '거래가'}
               </h2>
               <p className="text-[14px] text-slate-400 mt-0.5">
                 {entries.map((e) => e.fullLabel).join(' · ')}

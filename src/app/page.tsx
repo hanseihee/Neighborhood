@@ -23,9 +23,12 @@ import TradeTable from '@/components/TradeTable';
 import ApartmentList from '@/components/ApartmentList';
 import {
   fetchTrades,
+  fetchRents,
   calculateMonthlyStats,
+  calculateRentMonthlyStats,
   getPriceChanges,
 } from '@/lib/api';
+import { useTradeType, TradeTypeToggle } from '@/lib/trade-type';
 import { formatPrice, toSupplyPyeong } from '@/lib/utils';
 import { getRegionName } from '@/lib/constants';
 import {
@@ -41,12 +44,14 @@ import {
   setLastRegion,
 } from '@/lib/favorites';
 import type { FavoriteApt } from '@/lib/favorites';
-import type { AptTrade, SearchResult } from '@/lib/types';
+import type { AptTrade, AptRent, SearchResult } from '@/lib/types';
 
 export default function HomePage() {
   const searchParams = useSearchParams();
+  const { tradeType } = useTradeType();
   const [regionCode, setRegionCode] = useState('');
   const [trades, setTrades] = useState<AptTrade[]>([]);
+  const [rents, setRents] = useState<AptRent[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedArea, setSelectedArea] = useState<number | null>(null);
   const [selectedApt, setSelectedApt] = useState<string | null>(null);
@@ -187,19 +192,34 @@ export default function HomePage() {
 
     setLoading(true);
     setTrades([]);
+    setRents([]);
     setSelectedArea(30);
     setSelectedApt(null);
-    fetchTrades(regionCode, 36)
-      .then((data) => {
-        setTrades(data.trades);
-        if (pendingAptRef.current) {
-          setSelectedApt(pendingAptRef.current);
-          pendingAptRef.current = null;
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [regionCode]);
+
+    if (tradeType === 'rent') {
+      fetchRents(regionCode, 36)
+        .then((data) => {
+          setRents(data.rents);
+          if (pendingAptRef.current) {
+            setSelectedApt(pendingAptRef.current);
+            pendingAptRef.current = null;
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    } else {
+      fetchTrades(regionCode, 36)
+        .then((data) => {
+          setTrades(data.trades);
+          if (pendingAptRef.current) {
+            setSelectedApt(pendingAptRef.current);
+            pendingAptRef.current = null;
+          }
+        })
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }
+  }, [regionCode, tradeType]);
 
   // 비교 지역 데이터 로드
   useEffect(() => {
@@ -214,6 +234,8 @@ export default function HomePage() {
       .finally(() => setCompareLoading(false));
   }, [compareMode, compareRegionCode]);
 
+  const isRent = tradeType === 'rent';
+
   // 비교 모드 끄면 상태 초기화
   useEffect(() => {
     if (!compareMode) {
@@ -222,9 +244,13 @@ export default function HomePage() {
     }
   }, [compareMode]);
 
+  // 공통 데이터 소스 (trades or rents)
+  const activeData = isRent ? rents : trades;
+  const hasData = activeData.length > 0;
+
   const areaGroups = useMemo(() => {
     const map = new Map<number, number>();
-    for (const t of trades) {
+    for (const t of activeData) {
       const pyeong = toSupplyPyeong(t.전용면적);
       const group = Math.floor(pyeong / 10) * 10;
       map.set(group, (map.get(group) || 0) + 1);
@@ -232,7 +258,7 @@ export default function HomePage() {
     return Array.from(map.entries())
       .sort((a, b) => a[0] - b[0])
       .map(([group, count]) => ({ group, count }));
-  }, [trades]);
+  }, [activeData]);
 
   const filteredTrades = useMemo(() => {
     if (selectedArea === null) return trades;
@@ -242,6 +268,16 @@ export default function HomePage() {
     });
   }, [trades, selectedArea]);
 
+  const filteredRents = useMemo(() => {
+    if (selectedArea === null) return rents;
+    return rents.filter((r) => {
+      const pyeong = toSupplyPyeong(r.전용면적);
+      return Math.floor(pyeong / 10) * 10 === selectedArea;
+    });
+  }, [rents, selectedArea]);
+
+  const filteredData = isRent ? filteredRents : filteredTrades;
+
   const tableTrades = useMemo(() => {
     if (!selectedApt) return filteredTrades;
     return filteredTrades.filter(
@@ -249,10 +285,17 @@ export default function HomePage() {
     );
   }, [filteredTrades, selectedApt]);
 
+  const tableRents = useMemo(() => {
+    if (!selectedApt) return filteredRents;
+    return filteredRents.filter(
+      (r) => r.아파트.replace(/\(\d+단지\)$/, '').trim() === selectedApt
+    );
+  }, [filteredRents, selectedApt]);
+
   // 월별 통계
   const stats = useMemo(
-    () => calculateMonthlyStats(filteredTrades),
-    [filteredTrades]
+    () => isRent ? calculateRentMonthlyStats(filteredRents) : calculateMonthlyStats(filteredTrades),
+    [filteredTrades, filteredRents, isRent]
   );
   const latestStats = stats.length > 0 ? stats[stats.length - 1] : null;
 
@@ -283,22 +326,30 @@ export default function HomePage() {
 
   // 선택된 아파트 시세 추이
   const aptStats = useMemo(
-    () => (selectedApt ? calculateMonthlyStats(tableTrades) : []),
-    [selectedApt, tableTrades]
+    () => {
+      if (!selectedApt) return [];
+      return isRent
+        ? calculateRentMonthlyStats(tableRents)
+        : calculateMonthlyStats(tableTrades);
+    },
+    [selectedApt, tableTrades, tableRents, isRent]
   );
 
-  const totalCount = filteredTrades.length;
+  const totalCount = filteredData.length;
 
   return (
     <div className="space-y-8">
       {/* 1. 타이틀 */}
       <div>
         <h1 className="text-[26px] sm:text-[30px] font-bold text-slate-900 tracking-tight">
-          아파트 실거래가
+          아파트 시세
         </h1>
         <p className="mt-1.5 text-[15px] text-slate-400">
-          국토교통부 실거래가 공공데이터 기반 · 최근 3년
+          국토교통부 {isRent ? '전월세' : '실거래가'} 공공데이터 기반 · 최근 3년
         </p>
+        <div className="mt-3">
+          <TradeTypeToggle />
+        </div>
       </div>
 
       {/* 2. 지역 선택 + 검색 + 비교 토글 */}
@@ -403,7 +454,7 @@ export default function HomePage() {
       )}
 
       {/* Data display */}
-      {!loading && regionCode && trades.length > 0 && (
+      {!loading && regionCode && hasData && (
         <>
           {/* 4. 평수 필터 */}
           {areaGroups.length > 1 && (
@@ -439,7 +490,7 @@ export default function HomePage() {
           {/* 5. Stat cards */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <StatCard
-              label="평균 거래가"
+              label={isRent ? '평균 보증금' : '평균 거래가'}
               value={latestStats ? formatPrice(latestStats.avgPrice) : '-'}
               change={latestStats?.changeRate}
               sub={
@@ -494,8 +545,8 @@ export default function HomePage() {
               <div>
                 <h2 className="text-[17px] font-semibold text-slate-900">
                   {compareMode && compareRegionCode
-                    ? '지역 간 평균 거래가 비교'
-                    : '월별 평균 거래가'}
+                    ? `지역 간 평균 ${isRent ? '보증금' : '거래가'} 비교`
+                    : `월별 평균 ${isRent ? '보증금' : '거래가'}`}
                 </h2>
                 <p className="text-[14px] text-slate-400 mt-0.5">
                   {compareMode && compareRegionCode
@@ -557,7 +608,7 @@ export default function HomePage() {
           )}
 
           {/* 9. 거래량 히트맵 */}
-          <VolumeHeatmap trades={filteredTrades} />
+          {!isRent && <VolumeHeatmap trades={filteredTrades} />}
 
           {/* 10. 아파트 목록 + 거래 내역 */}
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
@@ -573,6 +624,8 @@ export default function HomePage() {
               </div>
               <ApartmentList
                 trades={filteredTrades}
+                rents={filteredRents}
+                mode={tradeType}
                 selectedApt={selectedApt}
                 onSelectApt={handleSelectApt}
                 favoriteNames={favoriteNames}
@@ -606,10 +659,10 @@ export default function HomePage() {
                   </p>
                 </div>
                 <span className="text-[14px] text-slate-400 tabular-nums">
-                  {tableTrades.length}건
+                  {isRent ? tableRents.length : tableTrades.length}건
                 </span>
               </div>
-              <TradeTable trades={tableTrades} />
+              <TradeTable trades={tableTrades} rents={tableRents} mode={tradeType} />
             </section>
           </div>
         </>
@@ -633,7 +686,7 @@ export default function HomePage() {
       )}
 
       {/* No data */}
-      {!loading && regionCode && trades.length === 0 && (
+      {!loading && regionCode && !hasData && (
         <div className="text-center py-28">
           <p className="text-[15px] text-slate-400">
             해당 지역의 거래 데이터가 없습니다

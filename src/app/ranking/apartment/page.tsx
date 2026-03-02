@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { fetchApartmentRanking, type ApartmentRankingItem } from '@/lib/api';
+import { useTradeType, TradeTypeToggle } from '@/lib/trade-type';
 import { formatPrice } from '@/lib/utils';
 import { REGIONS } from '@/lib/constants';
 
@@ -41,6 +42,7 @@ function getTierPriceRange(tierIndex: number) {
 }
 
 export default function ApartmentRankingPage() {
+  const { tradeType } = useTradeType();
   const [sido, setSido] = useState('11');
   const [selectedTier, setSelectedTier] = useState(0);
   const [apartments, setApartments] = useState<ApartmentRankingItem[]>([]);
@@ -50,14 +52,14 @@ export default function ApartmentRankingPage() {
   useEffect(() => {
     setLoading(true);
     const { minPrice, maxPrice } = getTierPriceRange(selectedTier);
-    fetchApartmentRanking(sido, { minPrice, maxPrice })
+    fetchApartmentRanking(sido, { minPrice, maxPrice, type: tradeType })
       .then(data => {
         setApartments(data.apartments);
         setTotalCount(data.totalCount);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [sido, selectedTier]);
+  }, [sido, selectedTier, tradeType]);
 
   const tier = TIERS[selectedTier];
 
@@ -69,8 +71,11 @@ export default function ApartmentRankingPage() {
           아파트 티어
         </h1>
         <p className="mt-1.5 text-[15px] text-slate-400">
-          최근 실거래가 기준 · 거래 3건 이상
+          최근 {tradeType === 'rent' ? '보증금' : '실거래가'} 기준 · 거래 3건 이상
         </p>
+        <div className="mt-3">
+          <TradeTypeToggle />
+        </div>
       </div>
 
       {/* 탭 + 시도 선택 */}
@@ -170,6 +175,9 @@ export default function ApartmentRankingPage() {
                 <div className="min-w-0">
                   <p className="text-[14px] font-semibold text-slate-800 truncate group-hover:text-slate-900">
                     {item.apartmentName}
+                    {item.areaGroup != null && (
+                      <span className="text-[11px] font-normal text-primary-500 ml-1">{item.areaGroup}평대</span>
+                    )}
                   </p>
                   <p className="text-[12px] text-slate-400 tabular-nums truncate">
                     {item.districtName} {item.dongName}

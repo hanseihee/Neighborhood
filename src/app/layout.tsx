@@ -1,11 +1,45 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import Providers from '@/components/Providers';
+import { WebApplicationJsonLd, DatasetJsonLd } from '@/components/JsonLd';
+import { SITE_URL, SITE_NAME, SITE_DESCRIPTION } from '@/lib/site';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: '아파트 실거래가 | 국토교통부 공공데이터',
-  description:
-    '국토교통부 실거래가 공공데이터 API 기반 아파트 매매 실거래가 조회 · 가격 추이 분석',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} | 아파트 실거래가 · 전월세`,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    type: 'website',
+    locale: 'ko_KR',
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} | 아파트 실거래가 · 전월세`,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+  },
+  twitter: {
+    card: 'summary',
+    title: `${SITE_NAME} | 아파트 실거래가 · 전월세`,
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  verification: {
+    google: '8oQ2PTTag4mUsIU2arE1p1wcL4-Y0cYuyStPV46jfkg',
+  },
+  alternates: { canonical: '/' },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -22,12 +56,17 @@ export default function RootLayout({
           crossOrigin="anonymous"
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
         />
+        <WebApplicationJsonLd />
+        <DatasetJsonLd />
       </head>
       <body className="min-h-screen">
-        <Header />
-        <main className="max-w-[1400px] mx-auto px-5 sm:px-8 pt-6 pb-16">
-          {children}
-        </main>
+        <Providers>
+          <Header />
+          <main className="max-w-[1400px] mx-auto px-5 sm:px-8 pt-6 pb-16">
+            {children}
+          </main>
+          <Footer />
+        </Providers>
       </body>
     </html>
   );

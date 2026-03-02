@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { ChevronDown, MapPin, Star } from 'lucide-react';
-import type { AptTrade } from '@/lib/types';
-import { getApartmentSummary } from '@/lib/api';
+import type { AptTrade, AptRent } from '@/lib/types';
+import type { TradeType } from '@/lib/trade-type';
+import { getApartmentSummary, getRentApartmentSummary } from '@/lib/api';
 import { formatPrice } from '@/lib/utils';
 
 type SortMode = 'avg' | 'max';
@@ -12,16 +13,18 @@ const INITIAL_COUNT = 20;
 
 interface ApartmentListProps {
   trades: AptTrade[];
+  rents?: AptRent[];
+  mode?: TradeType;
   selectedApt?: string | null;
   onSelectApt?: (aptName: string | null) => void;
   favoriteNames?: Set<string>;
   onToggleFavorite?: (aptName: string, avgPrice: number) => void;
 }
 
-export default function ApartmentList({ trades, selectedApt, onSelectApt, favoriteNames, onToggleFavorite }: ApartmentListProps) {
+export default function ApartmentList({ trades, rents = [], mode = 'trade', selectedApt, onSelectApt, favoriteNames, onToggleFavorite }: ApartmentListProps) {
   const [sortMode, setSortMode] = useState<SortMode>('avg');
   const [showAll, setShowAll] = useState(false);
-  const rawApartments = getApartmentSummary(trades);
+  const rawApartments = mode === 'rent' ? getRentApartmentSummary(rents) : getApartmentSummary(trades);
 
   const apartments = useMemo(() => {
     return [...rawApartments].sort((a, b) =>
@@ -43,17 +46,19 @@ export default function ApartmentList({ trades, selectedApt, onSelectApt, favori
     <div>
       {/* Sort toggle */}
       <div className="flex gap-1 mb-4 px-5">
-        {(['avg', 'max'] as const).map((mode) => (
+        {(['avg', 'max'] as const).map((sm) => (
           <button
-            key={mode}
-            onClick={() => setSortMode(mode)}
+            key={sm}
+            onClick={() => setSortMode(sm)}
             className={`px-3 py-1.5 rounded-md text-[14px] font-medium transition-colors cursor-pointer ${
-              sortMode === mode
+              sortMode === sm
                 ? 'bg-primary-600 text-white'
                 : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
             }`}
           >
-            {mode === 'avg' ? '평균시세순' : '최고가순'}
+            {sm === 'avg'
+              ? (mode === 'rent' ? '평균보증금순' : '평균시세순')
+              : '최고가순'}
           </button>
         ))}
       </div>

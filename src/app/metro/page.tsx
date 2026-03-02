@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchMetroStats } from '@/lib/api';
+import { useTradeType, TradeTypeToggle } from '@/lib/trade-type';
 import type { MetroStatsResponse } from '@/lib/types';
 import MetroChart from '@/components/MetroChart';
 import type { MetroSeries } from '@/components/MetroChart';
@@ -31,6 +32,7 @@ const labelMap = new Map(METRO_LIST.map((m) => [m.code, m.label]));
 const DEFAULT_SELECTED = new Set(['11', '41']);
 
 export default function MetroPage() {
+  const { tradeType } = useTradeType();
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(DEFAULT_SELECTED)
   );
@@ -52,35 +54,29 @@ export default function MetroPage() {
     });
   }, []);
 
-  // 선택된 시도의 데이터를 병렬 fetch
+  // 선택된 시도의 데이터를 병렬 fetch (tradeType 변경 시 전체 리로드)
   useEffect(() => {
     if (selected.size === 0) return;
 
     const codes = [...selected];
-    // 이미 로드된 코드는 제외
-    const toFetch = codes.filter((c) => !dataMap.has(c));
-
-    if (toFetch.length === 0) return;
 
     setLoading(true);
+    setDataMap(new Map());
     Promise.all(
-      toFetch.map((code) =>
-        fetchMetroStats(code).then((res) => ({ code, res }))
+      codes.map((code) =>
+        fetchMetroStats(code, 36, tradeType).then((res) => ({ code, res }))
       )
     )
       .then((results) => {
-        setDataMap((prev) => {
-          const next = new Map(prev);
-          for (const { code, res } of results) {
-            next.set(code, res);
-          }
-          return next;
-        });
+        const next = new Map<string, MetroStatsResponse>();
+        for (const { code, res } of results) {
+          next.set(code, res);
+        }
+        setDataMap(next);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
+  }, [selected, tradeType]);
 
   // 차트 시리즈 구성
   const chartSeries: MetroSeries[] = useMemo(() => {
@@ -155,8 +151,11 @@ export default function MetroPage() {
           시도별 비교
         </h1>
         <p className="mt-1.5 text-[15px] text-slate-400">
-          전국 시도 단위 평균 거래가 비교 · 최근 3년
+          전국 시도 단위 평균 {tradeType === 'rent' ? '보증금' : '거래가'} 비교 · 최근 3년
         </p>
+        <div className="mt-3">
+          <TradeTypeToggle />
+        </div>
       </div>
 
       {/* 시도 토글 버튼 */}
@@ -198,7 +197,7 @@ export default function MetroPage() {
         <section className="bg-white rounded-2xl border border-slate-100/80 p-5 sm:p-6">
           <div className="mb-4">
             <h2 className="text-[17px] font-semibold text-slate-900">
-              평균 거래가 추이
+              평균 {tradeType === 'rent' ? '보증금' : '거래가'} 추이
             </h2>
             <p className="text-[14px] text-slate-400 mt-0.5">
               {chartSeries.map((s) => s.label).join(' · ')}
@@ -233,7 +232,7 @@ export default function MetroPage() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-[17px] font-semibold text-slate-900">
-                월별 평균 거래가
+                월별 평균 {tradeType === 'rent' ? '보증금' : '거래가'}
               </h2>
               <p className="text-[14px] text-slate-400 mt-0.5">
                 {monthlyPivotData.entries.map((e) => e.label).join(' · ')}

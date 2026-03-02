@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchMetroStats } from '@/lib/api';
+import { useTradeType, TradeTypeToggle } from '@/lib/trade-type';
 import type { MetroStatsResponse } from '@/lib/types';
 import MetroChart from '@/components/MetroChart';
 import type { MetroSeries } from '@/components/MetroChart';
@@ -29,6 +30,7 @@ function formatMonth(m: string): string {
 }
 
 export default function VolumePage() {
+  const { tradeType } = useTradeType();
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(DEFAULT_SELECTED)
   );
@@ -52,7 +54,7 @@ export default function VolumePage() {
     setLoading(true);
     Promise.all(
       METRO_LIST.map((m) =>
-        fetchMetroStats(m.code).then((res) => ({ code: m.code, res }))
+        fetchMetroStats(m.code, 36, tradeType).then((res) => ({ code: m.code, res }))
       )
     )
       .then((results) => {
@@ -64,7 +66,7 @@ export default function VolumePage() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [tradeType]);
 
   const chartSeries: MetroSeries[] = useMemo(() => {
     const result: MetroSeries[] = [];
@@ -149,8 +151,11 @@ export default function VolumePage() {
           전국 거래량
         </h1>
         <p className="mt-1.5 text-[15px] text-slate-400">
-          시도별 월간 아파트 거래 건수 추이 · 최근 3년
+          시도별 월간 아파트 {tradeType === 'rent' ? '전세' : '매매'} 건수 추이 · 최근 3년
         </p>
+        <div className="mt-3">
+          <TradeTypeToggle />
+        </div>
       </div>
 
       {/* 시도 토글 버튼 */}

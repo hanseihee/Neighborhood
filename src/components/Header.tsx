@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Building2, Menu, X } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/', label: '지역별' },
+  { href: '/', label: '시세' },
   { href: '/metro', label: '시도 비교' },
   { href: '/district', label: '시군구 비교' },
   { href: '/volume', label: '거래량' },
@@ -46,10 +46,10 @@ export default function Header() {
               <Building2 size={14} className="text-white" strokeWidth={2.5} />
             </div>
             <span className="text-[16px] font-bold text-slate-800 tracking-tight">
-              실거래가
+              얼마집
             </span>
             <span className="text-[12px] text-slate-400 ml-0.5">
-              국토교통부 공공데이터
+              아파트 실거래가
             </span>
           </Link>
 
@@ -94,7 +94,7 @@ export default function Header() {
             <Building2 size={14} className="text-white" strokeWidth={2.5} />
           </div>
           <span className="text-[16px] font-bold text-slate-800 tracking-tight">
-            실거래가
+            얼마집
           </span>
         </Link>
 

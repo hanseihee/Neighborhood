@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const sido = searchParams.get('sido');
+    const districtParam = searchParams.get('district');
     const minTrades = parseInt(searchParams.get('minTrades') || '3', 10);
-    const limit = parseInt(searchParams.get('limit') || '1000', 10);
     const minPrice = searchParams.get('minPrice') ? parseInt(searchParams.get('minPrice')!, 10) : undefined;
     const maxPrice = searchParams.get('maxPrice') ? parseInt(searchParams.get('maxPrice')!, 10) : undefined;
 
@@ -43,27 +43,35 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = getSupabase();
+    const type = searchParams.get('type') || 'trade';
+    const isRent = type === 'rent';
+    const table = isRent ? 'rent_apartment_search' : 'apartment_search';
+    const priceCol = isRent ? 'recent_deposit' : 'recent_price';
+    const countCol = isRent ? 'jeonse_count' : 'trade_count';
 
     let query = supabase
-      .from('apartment_search')
-      .select('apartment_name, district_code, dong_name, recent_price, trade_count')
-      .gte('trade_count', minTrades)
-      .not('recent_price', 'is', null);
+      .from(table)
+      .select(`apartment_name, district_code, dong_name, ${priceCol}, ${countCol}, avg_area, build_year, area_group`)
+      .gte(countCol, minTrades)
+      .not(priceCol, 'is', null);
 
-    if (sido !== 'all') {
+    if (districtParam) {
+      query = query.eq('district_code', districtParam);
+    } else if (sido !== 'all') {
       query = query.like('district_code', `${sido}%`);
     }
 
     if (minPrice !== undefined) {
-      query = query.gte('recent_price', minPrice);
+      query = query.gte(priceCol, minPrice);
     }
     if (maxPrice !== undefined) {
-      query = query.lt('recent_price', maxPrice);
+      query = query.lt(priceCol, maxPrice);
     }
 
-    const { data, error } = await query
-      .order('recent_price', { ascending: false })
-      .limit(limit);
+    const built = query.order(priceCol, { ascending: false });
+    const { data, error } = districtParam
+      ? await built                // 시군구 지정 시 limit 없음
+      : await built.limit(3000);   // 시도 전체는 3000건 제한
 
     if (error) {
       console.error('[apartment-ranking] 쿼리 에러:', error);
@@ -75,15 +83,18 @@ export async function GET(request: NextRequest) {
 
     const rows = data || [];
 
-    const apartments = rows.map(row => {
-      const frontendCode = REVERSE_DISTRICT_MAP[row.district_code] || row.district_code;
+    const apartments = rows.map((row: Record<string, unknown>) => {
+      const frontendCode = REVERSE_DISTRICT_MAP[row.district_code as string] || row.district_code;
       return {
         apartmentName: row.apartment_name,
         districtCode: frontendCode,
-        districtName: getRegionName(frontendCode),
+        districtName: getRegionName(frontendCode as string),
         dongName: row.dong_name || '',
-        recentPrice: row.recent_price,
-        tradeCount: row.trade_count,
+        recentPrice: row[priceCol] as number,
+        tradeCount: row[countCol] as number,
+        avgArea: row.avg_area != null ? Number(row.avg_area) : undefined,
+        buildYear: row.build_year != null ? Number(row.build_year) : undefined,
+        areaGroup: row.area_group != null ? Number(row.area_group) : undefined,
       };
     });
 

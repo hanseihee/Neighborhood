@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { fetchDistrictRanking } from '@/lib/api';
+import { useTradeType, TradeTypeToggle } from '@/lib/trade-type';
 import { formatPrice } from '@/lib/utils';
 import { REGIONS } from '@/lib/constants';
 
@@ -52,15 +53,17 @@ function getDistrictName(code: string) {
 }
 
 export default function RankingPage() {
+  const { tradeType } = useTradeType();
   const [rankings, setRankings] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDistrictRanking()
+    setLoading(true);
+    fetchDistrictRanking(tradeType)
       .then(data => setRankings(data.rankings))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [tradeType]);
 
   // 티어별 그룹핑
   const tierGroups = useMemo(() => {
@@ -96,8 +99,11 @@ export default function RankingPage() {
           시군구 티어
         </h1>
         <p className="mt-1.5 text-[15px] text-slate-400">
-          최근 3개월 평균 거래가 기준 · 전국 {rankings.length}개 시군구
+          최근 3개월 평균 {tradeType === 'rent' ? '보증금' : '거래가'} 기준 · 전국 {rankings.length}개 시군구
         </p>
+        <div className="mt-3">
+          <TradeTypeToggle />
+        </div>
       </div>
 
       {/* 탭 */}

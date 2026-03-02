@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getSupabase } from '@/lib/supabase';
 
 const CACHE_MAX_AGE = 86400;
@@ -18,8 +18,9 @@ const DB_CODE_TO_DISPLAY: Record<string, string> = {
   '41595': '41590',  // 화성시
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const type = request.nextUrl.searchParams.get('type') || 'trade';
     const now = new Date();
     const startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
     const startYear = startDate.getFullYear();
@@ -27,9 +28,13 @@ export async function GET() {
 
     const supabase = getSupabase();
 
+    const isRent = type === 'rent';
+    const table = isRent ? 'rent_district_monthly_summary' : 'district_monthly_summary';
+    const avgCol = isRent ? 'avg_deposit' : 'avg_price';
+
     const { data, error } = await supabase
-      .from('district_monthly_summary')
-      .select('district_code, deal_year, deal_month, avg_price, trade_count')
+      .from(table)
+      .select(`district_code, deal_year, deal_month, ${avgCol}, trade_count`)
       .gte('deal_year', startYear)
       .order('deal_year', { ascending: false })
       .order('deal_month', { ascending: false });
@@ -47,20 +52,22 @@ export async function GET() {
     // district_code별 최근 3개월 가중평균가 및 거래건수 집계
     const byDistrict = new Map<string, { sumPrice: number; totalCount: number }>();
 
-    for (const row of rows) {
-      if (row.deal_year === startYear && row.deal_month < startMonth) continue;
+    for (const row of rows as Record<string, unknown>[]) {
+      if (row.deal_year === startYear && (row.deal_month as number) < startMonth) continue;
 
       // DB 코드를 디스플레이 코드로 변환
-      const displayCode = DB_CODE_TO_DISPLAY[row.district_code] || row.district_code;
+      const displayCode = DB_CODE_TO_DISPLAY[row.district_code as string] || (row.district_code as string);
+      const rowAvg = row[avgCol] as number;
 
+      const tradeCount = row.trade_count as number;
       const existing = byDistrict.get(displayCode);
       if (existing) {
-        existing.sumPrice += row.avg_price * row.trade_count;
-        existing.totalCount += row.trade_count;
+        existing.sumPrice += rowAvg * tradeCount;
+        existing.totalCount += tradeCount;
       } else {
         byDistrict.set(displayCode, {
-          sumPrice: row.avg_price * row.trade_count,
-          totalCount: row.trade_count,
+          sumPrice: rowAvg * tradeCount,
+          totalCount: tradeCount,
         });
       }
     }

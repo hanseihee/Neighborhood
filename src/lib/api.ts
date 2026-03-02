@@ -1,4 +1,5 @@
-import type { AptTrade, MonthlyStats, SearchResult, MetroStatsResponse } from './types';
+import type { AptTrade, AptRent, MonthlyStats, SearchResult, MetroStatsResponse } from './types';
+import type { TradeType } from './trade-type';
 import { toSupplyPyeong } from './utils';
 
 /** 실거래 데이터 fetch */
@@ -24,12 +25,23 @@ export async function searchApartments(
   return data.results;
 }
 
+/** 전월세 데이터 fetch */
+export async function fetchRents(
+  lawdCd: string,
+  months: number = 36
+): Promise<{ rents: AptRent[] }> {
+  const res = await fetch(`/api/rents?lawdCd=${lawdCd}&months=${months}`);
+  if (!res.ok) throw new Error('전월세 데이터를 불러올 수 없습니다');
+  return res.json();
+}
+
 /** 시도별 집계 데이터 fetch */
 export async function fetchMetroStats(
   sido: string,
-  months: number = 36
+  months: number = 36,
+  type: TradeType = 'trade'
 ): Promise<MetroStatsResponse> {
-  const res = await fetch(`/api/metro-stats?sido=${sido}&months=${months}`);
+  const res = await fetch(`/api/metro-stats?sido=${sido}&months=${months}&type=${type}`);
   if (!res.ok) throw new Error('시도별 데이터를 불러올 수 없습니다');
   return res.json();
 }
@@ -37,18 +49,21 @@ export async function fetchMetroStats(
 /** 시군구별 집계 데이터 fetch */
 export async function fetchDistrictStats(
   code: string,
-  months: number = 36
+  months: number = 36,
+  type: TradeType = 'trade'
 ): Promise<MetroStatsResponse> {
-  const res = await fetch(`/api/district-stats?code=${code}&months=${months}`);
+  const res = await fetch(`/api/district-stats?code=${code}&months=${months}&type=${type}`);
   if (!res.ok) throw new Error('시군구별 데이터를 불러올 수 없습니다');
   return res.json();
 }
 
 /** 시군구 랭킹 데이터 fetch */
-export async function fetchDistrictRanking(): Promise<{
+export async function fetchDistrictRanking(
+  type: TradeType = 'trade'
+): Promise<{
   rankings: { code: string; avgPrice: number; tradeCount: number }[];
 }> {
-  const res = await fetch('/api/district-ranking');
+  const res = await fetch(`/api/district-ranking?type=${type}`);
   if (!res.ok) throw new Error('랭킹 데이터를 불러올 수 없습니다');
   return res.json();
 }
@@ -61,16 +76,21 @@ export interface ApartmentRankingItem {
   dongName: string;
   recentPrice: number;
   tradeCount: number;
+  avgArea?: number;
+  buildYear?: number;
+  areaGroup?: number;
 }
 
 export async function fetchApartmentRanking(
   sido: string,
-  options?: { minTrades?: number; minPrice?: number; maxPrice?: number }
+  options?: { minTrades?: number; minPrice?: number; maxPrice?: number; type?: TradeType; district?: string }
 ): Promise<{ apartments: ApartmentRankingItem[]; totalCount: number }> {
   const params = new URLSearchParams({ sido });
   if (options?.minTrades !== undefined) params.set('minTrades', String(options.minTrades));
   if (options?.minPrice !== undefined) params.set('minPrice', String(options.minPrice));
   if (options?.maxPrice !== undefined) params.set('maxPrice', String(options.maxPrice));
+  if (options?.type) params.set('type', options.type);
+  if (options?.district) params.set('district', options.district);
   const res = await fetch(`/api/apartment-ranking?${params}`);
   if (!res.ok) throw new Error('아파트 랭킹 데이터를 불러올 수 없습니다');
   return res.json();
@@ -110,6 +130,82 @@ export function calculateMonthlyStats(trades: AptTrade[]): MonthlyStats[] {
 
   return stats;
 }
+
+/** 전월세 거래 목록 → 월별 통계 계산 (보증금 기준) */
+export function calculateRentMonthlyStats(rents: AptRent[]): MonthlyStats[] {
+  const byMonth: Record<string, AptRent[]> = {};
+
+  for (const rent of rents) {
+    const key = `${rent.년}${String(rent.월).padStart(2, '0')}`;
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(rent);
+  }
+
+  const months = Object.keys(byMonth).sort();
+  const stats: MonthlyStats[] = [];
+
+  for (let i = 0; i < months.length; i++) {
+    const m = months[i];
+    const monthRents = byMonth[m];
+    const deposits = monthRents.map(r => r.보증금);
+    const avg = Math.round(deposits.reduce((a, b) => a + b, 0) / deposits.length);
+    const prevAvg = i > 0 ? stats[i - 1].avgPrice : null;
+
+    stats.push({
+      month: m,
+      avgPrice: avg,
+      maxPrice: Math.max(...deposits),
+      minPrice: Math.min(...deposits),
+      count: deposits.length,
+      changeRate: prevAvg
+        ? Math.round(((avg - prevAvg) / prevAvg) * 1000) / 10
+        : null,
+    });
+  }
+
+  return stats;
+}
+
+/** 전월세 거래 목록 → 아파트별 최근 평균 보증금 */
+export function getRentApartmentSummary(rents: AptRent[]) {
+  const byApt: Record<string, AptRent[]> = {};
+  for (const r of rents) {
+    const pyeong = toPyeong(r.전용면적);
+    const key = `${baseAptName(r.아파트)}_${pyeong}`;
+    if (!byApt[key]) byApt[key] = [];
+    byApt[key].push(r);
+  }
+
+  return Object.entries(byApt)
+    .map(([, aptRents]) => {
+      const sorted = [...aptRents].sort((a, b) => {
+        const da = a.년 * 10000 + a.월 * 100 + a.일;
+        const db = b.년 * 10000 + b.월 * 100 + b.일;
+        return db - da;
+      });
+      const recent = sorted.slice(0, 5);
+      const avgPrice = Math.round(
+        recent.reduce((s, r) => s + r.보증금, 0) / recent.length
+      );
+      const pyeong = toPyeong(sorted[0].전용면적);
+      const maxPrice = Math.max(...aptRents.map(r => r.보증금));
+
+      return {
+        아파트: baseAptName(sorted[0].아파트),
+        전용면적: sorted[0].전용면적,
+        pyeong,
+        법정동: sorted[0].법정동,
+        건축년도: sorted[0].건축년도,
+        avgPrice,
+        maxPrice,
+        count: aptRents.length,
+        latest: sorted[0],
+      };
+    })
+    .sort((a, b) => b.avgPrice - a.avgPrice);
+}
+
+export type RentApartmentSummary = ReturnType<typeof getRentApartmentSummary>[number];
 
 /** ㎡ → 공급면적 기준 평수 (같은 단지의 미세한 면적 차이를 하나로 묶는 기준) */
 function toPyeong(sqm: number): number {
