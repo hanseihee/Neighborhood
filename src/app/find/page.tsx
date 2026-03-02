@@ -97,7 +97,7 @@ export default function FindPage() {
             maxPrice: Math.max(...prices),
           };
         })
-        .sort((a, b) => b.apartments.length - a.apartments.length);
+        .sort((a, b) => b.maxPrice - a.maxPrice);
 
       setGroups(grouped);
       setTotalApts(data.totalCount);
