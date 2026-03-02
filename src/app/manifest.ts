@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: '얼마집 - 아파트 실거래가 · 전월세',
-    short_name: '얼마집',
+    name: '집얼마 - 아파트 실거래가 · 전월세',
+    short_name: '집얼마',
     description:
       '국토교통부 공공데이터 기반 아파트 실거래가 조회 · 전월세 시세 비교',
     start_url: '/',

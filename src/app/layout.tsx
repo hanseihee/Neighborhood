@@ -9,21 +9,21 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} | 아파트 실거래가 · 전월세`,
-    template: `%s | ${SITE_NAME}`,
+    default: `${SITE_NAME} - 아파트 실거래가 · 전월세`,
+    template: `${SITE_NAME} - %s`,
   },
   description: SITE_DESCRIPTION,
   openGraph: {
     type: 'website',
     locale: 'ko_KR',
     siteName: SITE_NAME,
-    title: `${SITE_NAME} | 아파트 실거래가 · 전월세`,
+    title: `${SITE_NAME} - 아파트 실거래가 · 전월세`,
     description: SITE_DESCRIPTION,
     url: SITE_URL,
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${SITE_NAME} | 아파트 실거래가 · 전월세`,
+    title: `${SITE_NAME} - 아파트 실거래가 · 전월세`,
     description: SITE_DESCRIPTION,
   },
   robots: {

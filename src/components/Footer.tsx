@@ -22,7 +22,7 @@ export default function Footer() {
                 <Building2 size={14} className="text-white" strokeWidth={2.5} />
               </div>
               <span className="text-[16px] font-bold text-slate-800 tracking-tight">
-                얼마집
+                집얼마
               </span>
             </Link>
             <p className="text-[13px] text-slate-400 leading-relaxed max-w-xs">
@@ -48,7 +48,7 @@ export default function Footer() {
         {/* 하단 */}
         <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p className="text-[12px] text-slate-300">
-            &copy; {new Date().getFullYear()} 얼마집. 본 서비스는 국토교통부 공공데이터를 활용하며, 정보의 정확성을 보장하지 않습니다.
+            &copy; {new Date().getFullYear()} 집얼마. 본 서비스는 국토교통부 공공데이터를 활용하며, 정보의 정확성을 보장하지 않습니다.
           </p>
           <a
             href="https://www.data.go.kr"

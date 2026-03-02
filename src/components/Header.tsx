@@ -46,7 +46,7 @@ export default function Header() {
               <Building2 size={14} className="text-white" strokeWidth={2.5} />
             </div>
             <span className="text-[16px] font-bold text-slate-800 tracking-tight">
-              얼마집
+              집얼마
             </span>
             <span className="text-[12px] text-slate-400 ml-0.5">
               아파트 실거래가
@@ -94,7 +94,7 @@ export default function Header() {
             <Building2 size={14} className="text-white" strokeWidth={2.5} />
           </div>
           <span className="text-[16px] font-bold text-slate-800 tracking-tight">
-            얼마집
+            집얼마
           </span>
         </Link>
 

@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = '얼마집 - 아파트 실거래가 · 전월세';
+export const alt = '집얼마 - 아파트 실거래가 · 전월세';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -172,7 +172,7 @@ export default async function OgImage() {
             letterSpacing: -1,
           }}
         >
-          얼마집
+          집얼마
         </div>
 
         {/* Subtitle */}
