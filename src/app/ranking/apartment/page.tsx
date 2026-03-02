@@ -157,7 +157,7 @@ export default function ApartmentRankingPage() {
             {apartments.map((item, idx) => (
               <Link
                 key={`${item.apartmentName}-${item.dongName}-${idx}`}
-                href={`/?region=${item.districtCode}`}
+                href={`/?region=${item.districtCode}&apt=${encodeURIComponent(item.apartmentName)}`}
                 className="group flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-white border border-slate-100 hover:border-slate-200 hover:shadow-sm transition-all"
               >
                 <span

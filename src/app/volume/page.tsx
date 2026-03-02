@@ -24,6 +24,10 @@ const labelMap = new Map(METRO_LIST.map((m) => [m.code, m.label]));
 
 const DEFAULT_SELECTED = new Set(['all', '11', '41']);
 
+function formatMonth(m: string): string {
+  return `${m.slice(0, 4)}.${m.slice(4)}`;
+}
+
 export default function VolumePage() {
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(DEFAULT_SELECTED)
@@ -32,6 +36,7 @@ export default function VolumePage() {
     () => new Map()
   );
   const [loading, setLoading] = useState(false);
+  const [showAllMonths, setShowAllMonths] = useState(false);
 
   const toggleSido = useCallback((code: string) => {
     setSelected((prev) => {
@@ -42,32 +47,24 @@ export default function VolumePage() {
     });
   }, []);
 
+  // 모든 시도 데이터를 초기 로드
   useEffect(() => {
-    if (selected.size === 0) return;
-
-    const codes = [...selected];
-    const toFetch = codes.filter((c) => !dataMap.has(c));
-    if (toFetch.length === 0) return;
-
     setLoading(true);
     Promise.all(
-      toFetch.map((code) =>
-        fetchMetroStats(code).then((res) => ({ code, res }))
+      METRO_LIST.map((m) =>
+        fetchMetroStats(m.code).then((res) => ({ code: m.code, res }))
       )
     )
       .then((results) => {
-        setDataMap((prev) => {
-          const next = new Map(prev);
-          for (const { code, res } of results) {
-            next.set(code, res);
-          }
-          return next;
-        });
+        const map = new Map<string, MetroStatsResponse>();
+        for (const { code, res } of results) {
+          map.set(code, res);
+        }
+        setDataMap(map);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected]);
+  }, []);
 
   const chartSeries: MetroSeries[] = useMemo(() => {
     const result: MetroSeries[] = [];
@@ -116,6 +113,34 @@ export default function VolumePage() {
 
     return rows.sort((a, b) => b.latestCount - a.latestCount);
   }, [dataMap]);
+
+  // 월별 시도 피벗 데이터
+  const monthlyPivotData = useMemo(() => {
+    if (dataMap.size === 0) return null;
+
+    const allMonths = new Set<string>();
+    const lookup = new Map<string, Map<string, number>>();
+
+    for (const m of METRO_LIST) {
+      const data = dataMap.get(m.code);
+      if (!data) continue;
+      const monthMap = new Map<string, number>();
+      for (const stat of data.stats) {
+        allMonths.add(stat.month);
+        monthMap.set(stat.month, stat.count);
+      }
+      lookup.set(m.code, monthMap);
+    }
+
+    const months = [...allMonths].sort().reverse();
+    return { months, lookup };
+  }, [dataMap]);
+
+  const displayMonths = monthlyPivotData
+    ? showAllMonths
+      ? monthlyPivotData.months
+      : monthlyPivotData.months.slice(0, 12)
+    : [];
 
   return (
     <div className="space-y-8">
@@ -259,6 +284,94 @@ export default function VolumePage() {
               </tbody>
             </table>
           </div>
+        </section>
+      )}
+
+      {/* 월별 시도별 거래량 테이블 */}
+      {monthlyPivotData && displayMonths.length > 0 && (
+        <section className="bg-white rounded-2xl border border-slate-100/80 p-5 sm:p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-[17px] font-semibold text-slate-900">
+                월별 시도별 거래량
+              </h2>
+              <p className="text-[14px] text-slate-400 mt-0.5">
+                단위: 건
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-slate-400 font-medium sticky left-0 bg-white z-10 min-w-[72px]">
+                    월
+                  </th>
+                  {METRO_LIST.map((m) => (
+                    <th
+                      key={m.code}
+                      className="text-right py-2.5 px-2.5 text-slate-400 font-medium whitespace-nowrap"
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: m.color }}
+                        />
+                        {m.label}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {displayMonths.map((month, i) => (
+                  <tr
+                    key={month}
+                    className={`border-b border-slate-50 ${
+                      i % 2 === 1 ? 'bg-slate-50/40' : ''
+                    }`}
+                  >
+                    <td
+                      className={`py-2 px-3 text-slate-500 font-medium sticky left-0 z-10 whitespace-nowrap ${
+                        i % 2 === 1 ? 'bg-slate-50' : 'bg-white'
+                      }`}
+                    >
+                      {formatMonth(month)}
+                    </td>
+                    {METRO_LIST.map((m) => {
+                      const count = monthlyPivotData.lookup
+                        .get(m.code)
+                        ?.get(month);
+                      return (
+                        <td
+                          key={m.code}
+                          className="py-2 px-2.5 text-right tabular-nums text-slate-700"
+                        >
+                          {count != null ? count.toLocaleString() : '-'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {monthlyPivotData.months.length > 12 && (
+            <div className="mt-3 text-center">
+              <button
+                onClick={() => setShowAllMonths((v) => !v)}
+                className="flex items-center gap-1 mx-auto text-[13px] text-blue-500 hover:text-blue-700 font-medium transition-colors cursor-pointer"
+              >
+                {showAllMonths ? '접기' : `전체 ${monthlyPivotData.months.length}개월 보기`}
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                  {showAllMonths
+                    ? <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832l-3.71 3.938a.75.75 0 01-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd"/>
+                    : <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
+                  }
+                </svg>
+              </button>
+            </div>
+          )}
         </section>
       )}
 

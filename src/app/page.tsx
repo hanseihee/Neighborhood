@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   Building2,
   BarChart3,
@@ -43,6 +44,7 @@ import type { FavoriteApt } from '@/lib/favorites';
 import type { AptTrade, SearchResult } from '@/lib/types';
 
 export default function HomePage() {
+  const searchParams = useSearchParams();
   const [regionCode, setRegionCode] = useState('');
   const [trades, setTrades] = useState<AptTrade[]>([]);
   const [loading, setLoading] = useState(false);
@@ -50,6 +52,7 @@ export default function HomePage() {
   const [selectedApt, setSelectedApt] = useState<string | null>(null);
   const pendingAptRef = useRef<string | null>(null);
   const tradeTableRef = useRef<HTMLDivElement>(null);
+  const initRef = useRef(false);
 
   // 비교 모드
   const [compareMode, setCompareMode] = useState(false);
@@ -62,11 +65,25 @@ export default function HomePage() {
   const [districtFavs, setDistrictFavs] = useState<string[]>([]);
 
   useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
+
     setFavorites(getFavorites());
     setDistrictFavs(getDistrictFavorites());
-    const saved = getLastRegion();
-    if (saved) setRegionCode(saved);
-  }, []);
+
+    const paramRegion = searchParams.get('region');
+    const paramApt = searchParams.get('apt');
+
+    if (paramRegion) {
+      if (paramApt) {
+        pendingAptRef.current = paramApt.replace(/\(\d+단지\)$/, '').trim();
+      }
+      setRegionCode(paramRegion);
+    } else {
+      const saved = getLastRegion();
+      if (saved) setRegionCode(saved);
+    }
+  }, [searchParams]);
 
   // 마지막 선택 시군구 저장
   useEffect(() => {
@@ -464,12 +481,12 @@ export default function HomePage() {
             />
           </div>
 
-          {/* 6. 급등/급락 랭킹 */}
-          <PriceChange
+          {/* 6. 급등/급락 랭킹 (임시 숨김) */}
+          {/* <PriceChange
             up={priceChanges.up}
             down={priceChanges.down}
             onSelectApt={handleSelectApt}
-          />
+          /> */}
 
           {/* 7. 차트 (비교 모드 or 기본) */}
           <section className="bg-white rounded-2xl border border-slate-100/80 p-5 sm:p-6">

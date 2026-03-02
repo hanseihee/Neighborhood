@@ -8,6 +8,11 @@ import MetroChart from '@/components/MetroChart';
 import type { MetroSeries } from '@/components/MetroChart';
 import MetroTable from '@/components/MetroTable';
 import { X } from 'lucide-react';
+import { formatPriceShort } from '@/lib/utils';
+
+function formatMonth(m: string): string {
+  return `${m.slice(0, 4)}.${m.slice(4)}`;
+}
 
 const COLOR_POOL = [
   '#14B8A6', '#8B5CF6', '#3B82F6', '#F43F5E', '#F59E0B',
@@ -49,6 +54,7 @@ export default function DistrictPage() {
     () => new Map()
   );
   const [loading, setLoading] = useState(false);
+  const [showAllMonths, setShowAllMonths] = useState(false);
 
   // 시/도 → 시군구 선택 상태
   const [selectedSido, setSelectedSido] = useState('');
@@ -177,6 +183,35 @@ export default function DistrictPage() {
     }
     return rows;
   }, [entries, dataMap]);
+
+  // 월별 시군구 피벗 데이터 (평균 거래가)
+  const monthlyPivotData = useMemo(() => {
+    if (dataMap.size === 0 || entries.length === 0) return null;
+
+    const allMonths = new Set<string>();
+    const lookup = new Map<string, Map<string, number>>();
+
+    for (const entry of entries) {
+      const data = dataMap.get(entry.code);
+      if (!data) continue;
+      const monthMap = new Map<string, number>();
+      for (const stat of data.stats) {
+        allMonths.add(stat.month);
+        monthMap.set(stat.month, stat.avgPrice);
+      }
+      lookup.set(entry.code, monthMap);
+    }
+
+    if (lookup.size === 0) return null;
+    const months = [...allMonths].sort().reverse();
+    return { months, lookup };
+  }, [dataMap, entries]);
+
+  const displayMonths = monthlyPivotData
+    ? showAllMonths
+      ? monthlyPivotData.months
+      : monthlyPivotData.months.slice(0, 12)
+    : [];
 
   // 현재 시도의 시군구 목록
   const currentDistricts = useMemo(() => {
@@ -325,6 +360,94 @@ export default function DistrictPage() {
             selectedCodes={visibleCodes}
             onToggle={toggleVisible}
           />
+        </section>
+      )}
+
+      {/* 월별 시군구별 평균 거래가 테이블 */}
+      {monthlyPivotData && displayMonths.length > 0 && (
+        <section className="bg-white rounded-2xl border border-slate-100/80 p-5 sm:p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-[17px] font-semibold text-slate-900">
+                월별 평균 거래가
+              </h2>
+              <p className="text-[14px] text-slate-400 mt-0.5">
+                {entries.map((e) => e.fullLabel).join(' · ')}
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2.5 px-3 text-slate-400 font-medium sticky left-0 bg-white z-10 min-w-[72px]">
+                    월
+                  </th>
+                  {entries.map((e) => (
+                    <th
+                      key={e.code}
+                      className="text-right py-2.5 px-2.5 text-slate-400 font-medium whitespace-nowrap"
+                    >
+                      <div className="flex items-center justify-end gap-1">
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: e.color }}
+                        />
+                        {e.fullLabel}
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {displayMonths.map((month, i) => (
+                  <tr
+                    key={month}
+                    className={`border-b border-slate-50 ${
+                      i % 2 === 1 ? 'bg-slate-50/40' : ''
+                    }`}
+                  >
+                    <td
+                      className={`py-2 px-3 text-slate-500 font-medium sticky left-0 z-10 whitespace-nowrap ${
+                        i % 2 === 1 ? 'bg-slate-50' : 'bg-white'
+                      }`}
+                    >
+                      {formatMonth(month)}
+                    </td>
+                    {entries.map((e) => {
+                      const price = monthlyPivotData.lookup
+                        .get(e.code)
+                        ?.get(month);
+                      return (
+                        <td
+                          key={e.code}
+                          className="py-2 px-2.5 text-right tabular-nums text-slate-700"
+                        >
+                          {price != null ? formatPriceShort(price) : '-'}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {monthlyPivotData.months.length > 12 && (
+            <div className="mt-3 text-center">
+              <button
+                onClick={() => setShowAllMonths((v) => !v)}
+                className="flex items-center gap-1 mx-auto text-[13px] text-blue-500 hover:text-blue-700 font-medium transition-colors cursor-pointer"
+              >
+                {showAllMonths ? '접기' : `전체 ${monthlyPivotData.months.length}개월 보기`}
+                <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                  {showAllMonths
+                    ? <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832l-3.71 3.938a.75.75 0 01-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd"/>
+                    : <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd"/>
+                  }
+                </svg>
+              </button>
+            </div>
+          )}
         </section>
       )}
 
