@@ -63,6 +63,11 @@ export default function RootLayout({
             gtag('config', 'G-H5KHGNSS85');
           `}
         </Script>
+        <Script
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4582716621646848"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <link
           rel="stylesheet"
           as="style"
