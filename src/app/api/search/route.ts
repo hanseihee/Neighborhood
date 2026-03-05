@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       .select('apartment_name, district_code, dong_name, recent_price, trade_count')
       .ilike('apartment_name', `%${query}%`)
       .order('trade_count', { ascending: false })
-      .limit(limit);
+      .limit(limit * 5);
 
     if (error) {
       console.error('[Search] Supabase 쿼리 에러:', error);
@@ -48,7 +48,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const results = (data || []).map((row) => {
+    // area_group별 행이 나뉘어 있으므로 같은 아파트+지역은 합산하여 중복 제거
+    const merged = new Map<string, { apartment_name: string; district_code: string; dong_name: string; recent_price: number; trade_count: number }>();
+    for (const row of data || []) {
+      const key = `${row.apartment_name}|${row.district_code}`;
+      const existing = merged.get(key);
+      if (existing) {
+        existing.trade_count += row.trade_count;
+        if (row.recent_price > existing.recent_price) {
+          existing.recent_price = row.recent_price;
+        }
+      } else {
+        merged.set(key, { ...row });
+      }
+    }
+
+    const results = Array.from(merged.values())
+      .sort((a, b) => b.trade_count - a.trade_count)
+      .slice(0, limit)
+      .map((row) => {
       const frontendCode = REVERSE_DISTRICT_MAP[row.district_code] || row.district_code;
       return {
         apartmentName: row.apartment_name,
