@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import Link from 'next/link';
 import { fetchApartmentRanking, type ApartmentRankingItem } from '@/lib/api';
@@ -48,6 +48,7 @@ export default function ApartmentRankingPage() {
   const [apartments, setApartments] = useState<ApartmentRankingItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedArea, setSelectedArea] = useState<number | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -60,6 +61,29 @@ export default function ApartmentRankingPage() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [sido, selectedTier, tradeType]);
+
+  // 평수 필터 변경 시 초기화
+  useEffect(() => {
+    setSelectedArea(null);
+  }, [sido, selectedTier, tradeType]);
+
+  const AREA_FILTERS = [
+    { label: '전체', value: null },
+    { label: '10평대', value: 10 },
+    { label: '20평대', value: 20 },
+    { label: '30평대', value: 30 },
+    { label: '40평대', value: 40 },
+    { label: '50평대', value: 50 },
+    { label: '60평↑', value: 60 },
+  ] as const;
+
+  const filteredApartments = useMemo(() => {
+    if (selectedArea === null) return apartments;
+    if (selectedArea === 60) {
+      return apartments.filter(a => a.areaGroup != null && a.areaGroup >= 60);
+    }
+    return apartments.filter(a => a.areaGroup === selectedArea);
+  }, [apartments, selectedArea]);
 
   const tier = TIERS[selectedTier];
 
@@ -132,6 +156,24 @@ export default function ApartmentRankingPage() {
         })}
       </div>
 
+      {/* 평수 필터 */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[14px] text-slate-400 mr-1">평수</span>
+        {AREA_FILTERS.map((f) => (
+          <button
+            key={f.label}
+            onClick={() => setSelectedArea(f.value)}
+            className={`px-3 py-1.5 text-[14px] font-medium rounded-lg transition-all cursor-pointer ${
+              selectedArea === f.value
+                ? 'bg-primary-600 text-white'
+                : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {/* 로딩 */}
       {loading && (
         <div className="text-center py-28">
@@ -141,7 +183,7 @@ export default function ApartmentRankingPage() {
       )}
 
       {/* 선택된 티어 섹션 */}
-      {!loading && apartments.length > 0 && (
+      {!loading && filteredApartments.length > 0 && (
         <section>
           <div className="flex items-center gap-3 mb-3">
             <div
@@ -154,12 +196,15 @@ export default function ApartmentRankingPage() {
               <p className="text-[15px] font-semibold text-slate-700">
                 {getTierLabelFull(tier)}
               </p>
-              <p className="text-[13px] text-slate-400">{totalCount.toLocaleString()}개 단지</p>
+              <p className="text-[13px] text-slate-400">
+                {filteredApartments.length.toLocaleString()}개 단지
+                {selectedArea !== null && ` (전체 ${totalCount.toLocaleString()}개)`}
+              </p>
             </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {apartments.map((item, idx) => (
+            {filteredApartments.map((item, idx) => (
               <Link
                 key={`${item.apartmentName}-${item.dongName}-${idx}`}
                 href={`/?region=${item.districtCode}&apt=${encodeURIComponent(item.apartmentName)}`}
@@ -193,7 +238,7 @@ export default function ApartmentRankingPage() {
         </section>
       )}
 
-      {!loading && apartments.length === 0 && (
+      {!loading && filteredApartments.length === 0 && (
         <div className="text-center py-28">
           <div className="w-14 h-14 rounded-2xl bg-primary-50 flex items-center justify-center mx-auto mb-5">
             <Trophy size={24} className="text-primary-400" />
