@@ -292,7 +292,7 @@ export function Chat() {
   const renderInput = () => (
     <form
       onSubmit={handleSendMessage}
-      className={`p-3 border-t border-slate-200 bg-white shrink-0 ${!isDesktop ? 'pb-[calc(12px+env(safe-area-inset-bottom,0px))]' : ''}`}
+      className={`px-4 py-3 border-t border-slate-200 bg-white shrink-0 ${!isDesktop ? 'pb-[calc(12px+env(safe-area-inset-bottom,0px))]' : ''}`}
     >
       <div className="relative flex gap-2 items-center">
         {showEmojiPicker && (
