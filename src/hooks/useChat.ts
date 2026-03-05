@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { getSupabase } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 import type { ChatMessage } from '@/lib/chat-types';
 import { generateRandomNickname } from '@/lib/nickname-generator';
 
@@ -76,6 +76,12 @@ export function useChat() {
   const prevIsVisibleRef = useRef(false);
   const prevIsVisibleForScrollRef = useRef(false);
   const isReconnectingRef = useRef(false);
+  const isVisibleRef = useRef(false);
+
+  // isVisible를 ref로도 추적 (Realtime 콜백에서 최신 값 참조용)
+  useEffect(() => {
+    isVisibleRef.current = isVisible;
+  }, [isVisible]);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -106,9 +112,8 @@ export function useChat() {
     });
   }, []);
 
-  const supabase = getSupabase();
-
   const fetchMessages = useCallback(async () => {
+    const supabase = getSupabaseClient();
     setIsLoading(true);
     isInitialLoadRef.current = true;
     const { data, error } = await supabase
@@ -124,13 +129,14 @@ export function useChat() {
       setHasMore(data.length === MESSAGES_LIMIT);
     }
     setIsLoading(false);
-  }, [supabase]);
+  }, []);
 
   const loadMoreMessages = useCallback(async () => {
     if (isLoadingMore || !hasMore || messages.length === 0) return;
     const oldestMessage = messages[0];
     if (!oldestMessage) return;
 
+    const supabase = getSupabaseClient();
     setIsLoadingMore(true);
     const container = messagesContainerRef.current;
     const prevScrollHeight = container?.scrollHeight || 0;
@@ -155,10 +161,11 @@ export function useChat() {
       setHasMore(data.length === MESSAGES_LIMIT);
     }
     setIsLoadingMore(false);
-  }, [isLoadingMore, hasMore, messages, supabase]);
+  }, [isLoadingMore, hasMore, messages]);
 
   // Realtime subscription
   useEffect(() => {
+    const supabase = getSupabaseClient();
     fetchMessages();
 
     const messagesChannel = supabase
@@ -170,7 +177,8 @@ export function useChat() {
           const newMsg = payload.new as ChatMessage;
           setMessages((prev) => [...prev, newMsg]);
 
-          if (!isVisible) {
+          // isVisibleRef로 최신 값 참조
+          if (!isVisibleRef.current) {
             setUnreadCount((prev) => prev + 1);
             const myDeviceId = getDeviceId();
             if (newMsg.user_hash !== myDeviceId) {
@@ -240,7 +248,7 @@ export function useChat() {
       if (messagesChannelRef.current) supabase.removeChannel(messagesChannelRef.current);
       if (presenceChannelRef.current) supabase.removeChannel(presenceChannelRef.current);
     };
-  }, [fetchMessages, supabase]);
+  }, [fetchMessages]);
 
   // Reconnect on visibility change
   useEffect(() => {
@@ -330,6 +338,7 @@ export function useChat() {
     e.preventDefault();
     if (!newMessage.trim() || !nickname.trim()) return;
 
+    const supabase = getSupabaseClient();
     const { error } = await supabase.from('chat_messages').insert({
       nickname: nickname.trim(),
       message: newMessage.trim(),
@@ -351,6 +360,7 @@ export function useChat() {
     if (!trimmedNickname) return;
 
     setNicknameError('');
+    const supabase = getSupabaseClient();
     const myDeviceId = getDeviceId();
 
     const { data: existingUser } = await supabase
@@ -406,7 +416,6 @@ export function useChat() {
     myNicknameRef.current = trimmedNickname;
     setIsSettingNickname(false);
 
-    // Update presence with new nickname
     if (presenceChannelRef.current) {
       await presenceChannelRef.current.track({
         nickname: trimmedNickname,
