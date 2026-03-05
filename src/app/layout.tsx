@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Providers from '@/components/Providers';
@@ -50,6 +51,18 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <head>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-H5KHGNSS85"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-H5KHGNSS85');
+          `}
+        </Script>
         <link
           rel="stylesheet"
           as="style"
