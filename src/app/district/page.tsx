@@ -99,7 +99,7 @@ export default function DistrictPage() {
     setDataMap(new Map());
     Promise.all(
       codes.map((code) =>
-        fetchDistrictStats(code, 36, tradeType).then((res) => ({ code, res }))
+        fetchDistrictStats(code, 24, tradeType).then((res) => ({ code, res }))
       )
     )
       .then((results) => {

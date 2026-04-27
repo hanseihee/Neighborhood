@@ -5,7 +5,7 @@ import { toSupplyPyeong } from './utils';
 /** 실거래 데이터 fetch */
 export async function fetchTrades(
   lawdCd: string,
-  months: number = 36
+  months: number = 24
 ): Promise<{ trades: AptTrade[] }> {
   const res = await fetch(`/api/trades?lawdCd=${lawdCd}&months=${months}`);
   if (!res.ok) throw new Error('데이터를 불러올 수 없습니다');
@@ -28,7 +28,7 @@ export async function searchApartments(
 /** 전월세 데이터 fetch */
 export async function fetchRents(
   lawdCd: string,
-  months: number = 36
+  months: number = 24
 ): Promise<{ rents: AptRent[] }> {
   const res = await fetch(`/api/rents?lawdCd=${lawdCd}&months=${months}`);
   if (!res.ok) throw new Error('전월세 데이터를 불러올 수 없습니다');
@@ -38,7 +38,7 @@ export async function fetchRents(
 /** 시도별 집계 데이터 fetch */
 export async function fetchMetroStats(
   sido: string,
-  months: number = 36,
+  months: number = 24,
   type: TradeType = 'trade'
 ): Promise<MetroStatsResponse> {
   const res = await fetch(`/api/metro-stats?sido=${sido}&months=${months}&type=${type}`);
@@ -49,7 +49,7 @@ export async function fetchMetroStats(
 /** 시군구별 집계 데이터 fetch */
 export async function fetchDistrictStats(
   code: string,
-  months: number = 36,
+  months: number = 24,
   type: TradeType = 'trade'
 ): Promise<MetroStatsResponse> {
   const res = await fetch(`/api/district-stats?code=${code}&months=${months}&type=${type}`);

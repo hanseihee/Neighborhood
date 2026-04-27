@@ -54,7 +54,7 @@ export default function VolumePage() {
     setLoading(true);
     Promise.all(
       METRO_LIST.map((m) =>
-        fetchMetroStats(m.code, 36, tradeType).then((res) => ({ code: m.code, res }))
+        fetchMetroStats(m.code, 24, tradeType).then((res) => ({ code: m.code, res }))
       )
     )
       .then((results) => {

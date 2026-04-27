@@ -197,7 +197,7 @@ export default function HomePage() {
     setSelectedApt(null);
 
     if (tradeType === 'rent') {
-      fetchRents(regionCode, 36)
+      fetchRents(regionCode, 24)
         .then((data) => {
           setRents(data.rents);
           if (pendingAptRef.current) {
@@ -208,7 +208,7 @@ export default function HomePage() {
         .catch(console.error)
         .finally(() => setLoading(false));
     } else {
-      fetchTrades(regionCode, 36)
+      fetchTrades(regionCode, 24)
         .then((data) => {
           setTrades(data.trades);
           if (pendingAptRef.current) {
@@ -228,7 +228,7 @@ export default function HomePage() {
       return;
     }
     setCompareLoading(true);
-    fetchTrades(compareRegionCode, 36)
+    fetchTrades(compareRegionCode, 24)
       .then((data) => setCompareTrades(data.trades))
       .catch(console.error)
       .finally(() => setCompareLoading(false));

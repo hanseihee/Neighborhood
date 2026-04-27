@@ -64,7 +64,7 @@ export default function MetroPage() {
     setDataMap(new Map());
     Promise.all(
       codes.map((code) =>
-        fetchMetroStats(code, 36, tradeType).then((res) => ({ code, res }))
+        fetchMetroStats(code, 24, tradeType).then((res) => ({ code, res }))
       )
     )
       .then((results) => {
